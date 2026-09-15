@@ -1203,7 +1203,7 @@ async function refreshFromServer(){
 /* =========================================================
    STORAGE INTERFACE — بقیه کد اپ همچنان همین توابع رو صدا میزنه
    ========================================================= */
-function loadMaterials(){ return cachedData.materials || []; }
+function loadMaterials(){ return (cachedData.materials || []).map(x=>({...x})); }
 function saveMaterials(v){
   diffAndQueue('materials', cachedData.materials, v, materialToRow);
   cachedData.materials=v; saveSnapshotToLS();
@@ -1215,17 +1215,17 @@ function saveProducts(v){
   diffBom(flattenBom(old), flattenBom(v));
   cachedData.products=v; saveSnapshotToLS();
 }
-function loadSales(){ return cachedData.sales || []; }
+function loadSales(){ return (cachedData.sales || []).map(x=>({...x})); }
 function saveSales(v){
   diffAndQueue('sales', cachedData.sales, v, saleToRow);
   cachedData.sales=v; saveSnapshotToLS();
 }
-function loadPriceItems(){ return cachedData.priceItems || []; }
+function loadPriceItems(){ return (cachedData.priceItems || []).map(x=>({...x})); }
 function savePriceItems(v){
   diffAndQueue('price_items', cachedData.priceItems, v, priceItemToRow);
   cachedData.priceItems=v; saveSnapshotToLS();
 }
-function loadUnits(){ return cachedData.units || []; }
+function loadUnits(){ return (cachedData.units || []).map(x=>({...x})); }
 function saveUnits(v){
   diffAndQueue('units', cachedData.units, v, unitToRow);
   cachedData.units=v; saveSnapshotToLS();
