@@ -2034,6 +2034,7 @@ document.getElementById('priceItemForm').addEventListener('submit',function(e){
 });
 
 /* --- BOM builder --- */
+/* --- BOM builder --- */
 function renderBomEditor(){
   const wrap=document.getElementById('prodBomRows');
   if(!wrap) return;
@@ -2041,7 +2042,11 @@ function renderBomEditor(){
   const items=loadPriceItems();
   if(items.length===0){
     wrap.innerHTML='<p class="hint">ابتدا در تب «فهرست بها» حداقل یک آیتم اضافه کن.</p>';
-  } else if(currentBomRows.length===0){
+    const totalEl=document.getElementById('prodBomTotal');
+    if(totalEl) totalEl.textContent='0 تومان';
+    return;
+  }
+  if(currentBomRows.length===0){
     wrap.innerHTML='<p class="hint">هنوز آیتمی برای این محصول اضافه نشده.</p>';
   }
   currentBomRows.forEach((row,idx)=>{
@@ -2052,28 +2057,60 @@ function renderBomEditor(){
     div.className='bom-row';
     div.innerHTML=`
       <select data-idx="${idx}" class="bom-item-select">${options}</select>
-      <input type="number" inputmode="numeric" min="0" step="any" value="${row.qty}" data-idx="${idx}" class="bom-qty-input" placeholder="مقدار">
+      <input type="text" inputmode="decimal" value="${row.qty}" data-idx="${idx}" class="bom-qty-input" placeholder="مقدار">
       <div class="bom-cost mono">${money(cost)}</div>
       <button type="button" data-idx="${idx}" class="bom-remove" title="حذف">🗑</button>`;
     wrap.appendChild(div);
   });
+
+  /* فقط انتخاب آیتم → کل ردیف بازسازی می‌شود (چون هزینه واحد عوض می‌شود) */
   wrap.querySelectorAll('.bom-item-select').forEach(el=>el.addEventListener('change',function(){
-    currentBomRows[Number(this.dataset.idx)].itemId=this.value; renderBomEditor();
+    currentBomRows[Number(this.dataset.idx)].itemId=this.value;
+    renderBomEditor();
   }));
+
+  /* ورودی مقدار → فقط مقدار را ذخیره کن، DOM را دست نزن، فقط هزینه را به‌روز کن */
   wrap.querySelectorAll('.bom-qty-input').forEach(el=>el.addEventListener('input',function(){
-    currentBomRows[Number(this.dataset.idx)].qty=this.value; renderBomEditor();
+    const idx=Number(this.dataset.idx);
+    // فقط کاراکترهای مجاز: عدد و یک نقطه اعشار
+    let v = this.value.replace(/[^\d.]/g, '');
+    const firstDot = v.indexOf('.');
+    if (firstDot !== -1) {
+      // نقطه‌های اضافی را حذف کن
+      v = v.slice(0, firstDot+1) + v.slice(firstDot+1).replace(/\./g, '');
+    }
+    if (v !== this.value) this.value = v;
+
+    currentBomRows[idx].qty = v;
+
+    // هزینه‌ی همان ردیف را به‌روز کن (بدون بازسازی کل DOM)
+    const item = items.find(i => i.id === currentBomRows[idx].itemId);
+    const rowCost = item ? (Number(v)||0) * item.unitPrice : 0;
+    const costEl = this.parentElement.querySelector('.bom-cost');
+    if (costEl) costEl.textContent = money(rowCost);
+
+    // جمع کل را هم به‌روز کن
+    updateBomTotal();
   }));
+
   wrap.querySelectorAll('.bom-remove').forEach(el=>el.addEventListener('click',function(){
-    currentBomRows.splice(Number(this.dataset.idx),1); renderBomEditor();
+    currentBomRows.splice(Number(this.dataset.idx),1);
+    renderBomEditor();
   }));
-  const total=currentBomRows.reduce((s,row)=>{
-    const item=items.find(i=>i.id===row.itemId);
-    return s + (item ? (Number(row.qty)||0)*item.unitPrice : 0);
-  },0);
-  const totalEl=document.getElementById('prodBomTotal');
-  if(totalEl) totalEl.textContent=money(total)+' تومان';
+
+  updateBomTotal();
 }
 
+/* فقط جمع کل را بازمحاسبه و متن را به‌روز می‌کند (بدون بازسازی DOM) */
+function updateBomTotal(){
+  const items = loadPriceItems();
+  const total = currentBomRows.reduce((s,row)=>{
+    const item = items.find(i => i.id === row.itemId);
+    return s + (item ? (Number(row.qty)||0) * item.unitPrice : 0);
+  }, 0);
+  const totalEl = document.getElementById('prodBomTotal');
+  if (totalEl) totalEl.textContent = money(total) + ' تومان';
+}
 /* --- cost analysis --- */
 function renderCostAnalysis(){
   const items=loadPriceItems();
