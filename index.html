@@ -93,7 +93,6 @@
   nav.tabs > button:hover{color:var(--text);}
   nav.tabs > button.active{background:var(--panel-alt);color:var(--text);box-shadow:inset 0 2px 0 var(--gold);}
 
-  /* ---- More Menu ---- */
   .tabs-more-wrap{position:relative;margin-right:auto;}
   .tabs-more-btn{
     background:var(--panel);color:var(--muted);border:1px solid var(--border);border-bottom:none;
@@ -175,7 +174,6 @@
   }
   .dp-day:hover{background:rgba(255,255,255,.06);}
 
-  /* ---- Custom Confirm Modal ---- */
   .confirm-overlay{
     display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;
     align-items:center;justify-content:center;padding:20px;
@@ -189,7 +187,6 @@
   .confirm-box p{margin:0 0 18px;font-size:14px;line-height:1.7;color:var(--text);}
   .confirm-actions{display:flex;gap:8px;justify-content:flex-end;}
 
-  /* ---- Auth Overlay ---- */
   .auth-overlay{
     display:none;position:fixed;inset:0;background:var(--bg);z-index:3000;
     align-items:center;justify-content:center;padding:20px;
@@ -213,7 +210,6 @@
   }
   .auth-box .btn-ghost:hover{color:var(--text);}
 
-  /* ---- Pager ---- */
   .pager{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;}
   .pager button{
     background:var(--panel);border:1px solid var(--border);color:var(--text);
@@ -256,6 +252,8 @@
   th{color:var(--muted);font-weight:600;font-size:12px;}
   tbody tr:hover{background:rgba(255,255,255,.02);}
   .badge{background:var(--gold-dim);color:#f0c876;padding:3px 8px;border-radius:6px;font-size:11.5px;}
+  .badge-goods{background:#1f3d2d;color:#7fd4a4;}
+  .badge-service{background:#3a2a4a;color:#c0a4e0;}
   .empty{color:var(--muted);text-align:center;padding:34px 10px;font-size:13.5px;line-height:1.8;}
   .row-actions{display:flex;gap:2px;}
   .row-actions button{
@@ -319,6 +317,9 @@
     .bom-row .bom-cost{order:1;}
   }
   .costing-badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:6px;background:var(--gold-dim);color:#f0c876;margin-right:6px;}
+  .wealth-card{background:linear-gradient(180deg,#2a2418,#1a1710);border-color:var(--gold);}
+  .wealth-card .n{color:var(--gold);}
+  .wealth-card .l{color:var(--gold);}
 </style>
 </head>
 <body>
@@ -343,7 +344,13 @@
       <div class="receipt-cell"><div class="val mono" id="sumSales">0</div><div class="lbl">تعداد فروش</div></div>
       <div class="receipt-cell"><div class="val mono" id="sumRevenue">0</div><div class="lbl">درآمد کل (تومان)</div></div>
       <div class="receipt-cell"><div class="val mono" id="sumCost">0</div><div class="lbl">هزینه کل (تومان)</div></div>
-      <div class="receipt-cell" id="sumProfitCell"><div class="val mono" id="sumProfit">0</div><div class="lbl">سود خالص (تومان)</div></div>
+      <div class="receipt-cell" id="sumProfitCell"><div class="val mono" id="sumProfit">0</div><div class="lbl">💰 سود نقدی (تومان)</div></div>
+    </div>
+    <div class="receipt-grid" style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);">
+      <div class="receipt-cell" id="sumExpectedCell"><div class="val mono" id="sumExpected">0</div><div class="lbl">📊 سود انتظاری (تومان)</div></div>
+      <div class="receipt-cell" id="sumInventoryCell"><div class="val mono" id="sumInventory">0</div><div class="lbl">📦 ارزش انبار (تومان)</div></div>
+      <div class="receipt-cell"><div class="val mono" id="sumExpectedCost">0</div><div class="lbl">هزینه کالای مصرف‌شده</div></div>
+      <div class="receipt-cell" id="sumWealthCell"><div class="val mono" id="sumWealth">0</div><div class="lbl">🏆 ثروت کل (تومان)</div></div>
     </div>
   </div>
 </header>
@@ -356,6 +363,7 @@
     <div class="tabs-more-menu" id="moreMenu">
       <button data-tab="products" data-menu="true">📦 محصولات</button>
       <button data-tab="costing" data-menu="true">📋 فهرست بها</button>
+      <button data-tab="inventory" data-menu="true">🏬 موجودی انبار</button>
       <button data-tab="analysis" data-menu="true">📊 آنالیز و گزارش</button>
     </div>
   </div>
@@ -415,7 +423,7 @@
       </div>
       <div class="tablewrap">
         <table>
-          <thead><tr><th>تاریخ</th><th>عنوان</th><th>مقدار</th><th>هزینه (تومان)</th><th></th></tr></thead>
+          <thead><tr><th>تاریخ</th><th>عنوان</th><th>نوع</th><th>مقدار</th><th>هزینه (تومان)</th><th></th></tr></thead>
           <tbody id="matBody"></tbody>
         </table>
       </div>
@@ -524,14 +532,23 @@
 
     <div class="card">
       <h2 id="priceItemFormTitle"><span class="icon">＋</span> افزودن آیتم به فهرست بها</h2>
-      <p class="hint">فهرست بها مبنای تمام محاسبات اپ است (موادبری محصولات، هزینه‌های خرید). <b>این هزینه‌ها در «آنالیز و گزارش» و محاسبهٔ سود خالص شمارش نمی‌شوند</b> — فقط جنبهٔ تحلیلی دارند.</p>
+      <p class="hint">فهرست بها مبنای تمام محاسبات اپ است. <b>کالاها</b> در موجودی انبار شمرده می‌شوند ولی <b>خدمات</b> فقط در هزینه‌ها و تحلیل محصول می‌آیند.</p>
       <form id="priceItemForm">
         <input type="hidden" id="priceItemId">
-        <div class="row3">
+        <div class="row2">
           <div class="field">
             <label>نام آیتم *</label>
-            <input type="text" id="priceItemName" placeholder="مثلاً: چوب، پلکسی، دستمزد طراحی" required>
+            <input type="text" id="priceItemName" placeholder="مثلاً: چوب، لیزر، مونتاژ" required>
           </div>
+          <div class="field">
+            <label>نوع آیتم *</label>
+            <select id="priceItemKind" required>
+              <option value="goods">🧱 کالا (فیزیکی — در انبار شمرده می‌شود)</option>
+              <option value="service">🔧 خدمات (غیرفیزیکی — در انبار شمرده نمی‌شود)</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
           <div class="field">
             <label>واحد *</label>
             <select id="priceItemUnit" required></select>
@@ -558,11 +575,65 @@
       <p class="hint">هروقت در «هزینه‌ها» خرید جدیدی از یک آیتم ثبت شود، قیمت واحد و تاریخ آن اینجا خودکار به‌روز می‌شود.</p>
       <div class="tablewrap">
         <table>
-          <thead><tr><th>نام آیتم</th><th>واحد</th><th>قیمت واحد (تومان)</th><th>تاریخ به‌روزرسانی</th><th></th></tr></thead>
+          <thead><tr><th>نام آیتم</th><th>نوع</th><th>واحد</th><th>قیمت واحد (تومان)</th><th>تاریخ به‌روزرسانی</th><th></th></tr></thead>
           <tbody id="priceItemBody"></tbody>
         </table>
       </div>
       <div class="empty" id="priceItemEmpty" style="display:none">هنوز آیتمی به فهرست بها اضافه نشده.</div>
+    </div>
+  </section>
+
+  <!-- INVENTORY -->
+  <section class="tabpanel" id="tab-inventory">
+    <div class="card">
+      <h2><span class="icon">⌕</span> فیلتر</h2>
+      <div class="filters" style="grid-template-columns:1fr 1fr;">
+        <div class="field" style="margin-bottom:0">
+          <label>جستجو در نام آیتم</label>
+          <input type="text" id="invSearch" placeholder="مثلاً: پارچه">
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label>نمایش</label>
+          <select id="invFilterMode">
+            <option value="all">همه‌ی کالاها</option>
+            <option value="low">فقط کم‌موجودها</option>
+            <option value="positive">فقط موجودی مثبت</option>
+            <option value="negative">فقط موجودی منفی (هشدار)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">▤</span> خلاصه</h2>
+      <div class="stat-cards">
+        <div class="stat-card"><div class="n mono" id="invTotalItems">0</div><div class="l">تعداد کالاها</div></div>
+        <div class="stat-card"><div class="n mono" id="invTotalValue">0</div><div class="l">ارزش کل موجودی (تومان)</div></div>
+        <div class="stat-card loss" id="invLowCard"><div class="n mono" id="invLowCount">0</div><div class="l">کالای کم‌موجود</div></div>
+        <div class="stat-card loss" id="invNegCard"><div class="n mono" id="invNegCount">0</div><div class="l">موجودی منفی (خطا)</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">≡</span> موجودی انبار</h2>
+      <p class="hint">فقط کالاها در انبار شمرده می‌شوند. موجودی هر کالا = مجموع خریدها − مجموع مصرف در فروش‌ها (بر اساس موادبری هر محصول). خدمات در این جدول دیده نمی‌شوند.</p>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>کالا</th>
+              <th>واحد</th>
+              <th>خریداری‌شده</th>
+              <th>مصرف‌شده</th>
+              <th>موجودی فعلی</th>
+              <th>قیمت واحد</th>
+              <th>ارزش موجودی</th>
+            </tr>
+          </thead>
+          <tbody id="invBody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="invEmpty" style="display:none">هنوز کالایی در فهرست بها نیست.</div>
     </div>
   </section>
 
@@ -633,13 +704,28 @@
     </div>
 
     <div class="card">
-      <h2><span class="icon">▤</span> خلاصه سود و زیان</h2>
+      <h2><span class="icon">▤</span> خلاصه کسب‌وکار</h2>
       <div class="stat-cards">
         <div class="stat-card"><div class="n mono" id="anRevenue">0</div><div class="l">درآمد فروش</div></div>
-        <div class="stat-card"><div class="n mono" id="anMaterials">0</div><div class="l">جمع هزینه‌ها</div></div>
-        <div class="stat-card" id="anNetCard"><div class="n mono" id="anNet">0</div><div class="l">سود خالص</div></div>
-        <div class="stat-card"><div class="n mono" id="anMargin">—</div><div class="l">حاشیه سود خالص</div></div>
+        <div class="stat-card"><div class="n mono" id="anMaterials">0</div><div class="l">هزینه‌های واقعی</div></div>
+        <div class="stat-card" id="anNetCard"><div class="n mono" id="anNet">0</div><div class="l">💰 سود نقدی</div></div>
+        <div class="stat-card"><div class="n mono" id="anMargin">—</div><div class="l">حاشیه سود نقدی</div></div>
       </div>
+
+      <div class="divider"></div>
+
+      <div class="stat-cards">
+        <div class="stat-card"><div class="n mono" id="anConsumedCost">0</div><div class="l">هزینه کالای مصرف‌شده</div></div>
+        <div class="stat-card" id="anExpectedCard"><div class="n mono" id="anExpected">0</div><div class="l">📊 سود انتظاری</div></div>
+        <div class="stat-card" id="anInventoryValueCard"><div class="n mono" id="anInventoryValue">0</div><div class="l">📦 ارزش انبار فعلی</div></div>
+        <div class="stat-card wealth-card"><div class="n mono" id="anTotalWealth">0</div><div class="l">🏆 ثروت کل</div></div>
+      </div>
+
+      <p class="hint" style="margin-top:12px;margin-bottom:0">
+        <b>سود نقدی</b> = درآمد − هزینه‌های پرداخت‌شده (پولی که در جیب داری).<br>
+        <b>سود انتظاری</b> = درآمد − هزینه کالای مصرف‌شده در فروش‌ها (مستقل از زمان خرید).<br>
+        <b>ثروت کل</b> = سود نقدی + ارزش انبار فعلی (پول در جیب + پول خوابیده در انبار).
+      </p>
     </div>
 
     <div class="card">
@@ -650,6 +736,10 @@
 
     <div class="card">
       <h2><span class="icon">▥</span> روند سود ماهانه</h2>
+      <div class="form-actions" style="margin-bottom:12px">
+        <button type="button" class="btn btn-small" id="anModeCash">💰 سود نقدی</button>
+        <button type="button" class="btn btn-ghost btn-small" id="anModeExpected">📊 سود انتظاری</button>
+      </div>
       <div id="anByMonth"></div>
       <div class="empty" id="anByMonthEmpty" style="display:none">داده‌ای برای نمایش وجود ندارد.</div>
     </div>
@@ -673,7 +763,6 @@
   </div>
 </div>
 
-<!-- AUTH OVERLAY -->
 <div class="auth-overlay open" id="authOverlay">
   <div class="auth-box">
     <h1><span>دفتر</span> کسب‌وکار</h1>
@@ -694,7 +783,6 @@
   </div>
 </div>
 
-<!-- CUSTOM CONFIRM MODAL -->
 <div class="confirm-overlay" id="confirmOverlay">
   <div class="confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="confirmMsg">
     <p id="confirmMsg"></p>
@@ -712,14 +800,10 @@
 const SUPABASE_URL = 'https://tqjnedvjsovxksdtbdsc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_8h1k_5tJNEX0MQA4E2ds5w__3ARv2TO';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-/* اپ فقط برای یک کسب‌وکار (خانواده) استفاده میشه؛ همه چیز زیر همین شناسه‌ی ثابت ذخیره میشه
-   (همون ردیفی که تو schema.sql ساختیم) */
 const BUSINESS_ID = '00000000-0000-0000-0000-000000000001';
 
 /* =========================================================
-   UUID GENERATOR — همه idهای جدید باید UUID واقعی باشن
-   چون ستون id تو Postgres از نوع uuid تعریف شده
+   UUID GENERATOR
    ========================================================= */
 function uid(){
   if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -730,7 +814,7 @@ function uid(){
 }
 
 /* =========================================================
-   LOCAL SNAPSHOT + OPERATION QUEUE (در localStorage پایدارن)
+   LOCAL SNAPSHOT + OPERATION QUEUE
    ========================================================= */
 const LS_SNAPSHOT_KEY = 'bizledger_snapshot_v2';
 const LS_QUEUE_KEY    = 'bizledger_queue_v2';
@@ -751,7 +835,6 @@ function loadSnapshotFromLS(){
   try{ const raw=localStorage.getItem(LS_SNAPSHOT_KEY); return raw?JSON.parse(raw):null; }
   catch(e){ return null; }
 }
-
 function loadQueueFromLS(){
   try{ const raw=localStorage.getItem(LS_QUEUE_KEY); return raw?JSON.parse(raw):[]; }
   catch(e){ return []; }
@@ -761,17 +844,15 @@ function saveQueueToLS(){
   catch(e){}
 }
 
-let opQueue = loadQueueFromLS();   // صف عملیات منتظر ارسال — هر آیتم یک insert/update/delete مستقل
+let opQueue = loadQueueFromLS();
 let isSyncing = false;
 let isConnected = false;
 let syncRetryCount = 0;
 let flushTimer = null;
-
 function isDirty(){ return opQueue.length > 0; }
 
 /* =========================================================
-   ROW  ⇄  JS-OBJECT  MAPPING
-   دیتابیس snake_case داره، کد اپ camelCase — این توابع تبدیل میکنن
+   ROW ⇄ JS-OBJECT MAPPING
    ========================================================= */
 function unitIdByName(name){
   const u=(cachedData.units||[]).find(x=>x.name===name);
@@ -781,7 +862,6 @@ function unitNameById(id){
   const u=(cachedData.units||[]).find(x=>x.id===id);
   return u ? u.name : '';
 }
-
 function materialToRow(o){
   return {id:o.id, business_id:BUSINESS_ID, item_id:o.itemId||null, item_name:o.itemName,
     unit:o.unit||null, date:o.date, qty:o.qty, unit_price_used:o.unitPriceUsed, cost:o.cost, note:o.note||null};
@@ -796,7 +876,7 @@ function saleToRow(o){
 }
 function priceItemToRow(o){
   return {id:o.id, business_id:BUSINESS_ID, name:o.name, unit_id:unitIdByName(o.unit),
-    unit_price:o.unitPrice, price_date:o.priceDate};
+    unit_price:o.unitPrice, price_date:o.priceDate, kind:o.kind||'goods'};
 }
 function unitToRow(o){
   return {id:o.id, business_id:BUSINESS_ID, name:o.name};
@@ -804,7 +884,7 @@ function unitToRow(o){
 function rowWithoutId(row){ const {id, ...rest}=row; return rest; }
 
 /* =========================================================
-   SUPABASE CRUD با timeout محافظ
+   SUPABASE CRUD
    ========================================================= */
 function withTimeout(promise){
   return Promise.race([
@@ -812,9 +892,6 @@ function withTimeout(promise){
     new Promise((_,reject)=>setTimeout(()=>reject(new Error('sync timeout')), OP_TIMEOUT_MS))
   ]);
 }
-/* از upsert استفاده میکنیم به‌جای insert تا اگر insert اول timeout خورد ولی
-   واقعاً روی سرور ذخیره شده بود، تلاش دوم رکورد تکراری نسازد و خطای
-   duplicate key ندهد. با onConflict:'id' اپراتور idempotent می‌شود. */
 async function dbInsert(table, row){
   const {error} = await withTimeout(
     supabase.from(table).upsert([row], {onConflict:'id', ignoreDuplicates:false})
@@ -843,7 +920,7 @@ async function dbDeleteBom(productId, itemId){
 }
 
 /* =========================================================
-   OPERATION QUEUE — هر تغییر یک عملیات مستقل و قابل retry
+   OPERATION QUEUE
    ========================================================= */
 function enqueueOp(op){
   opQueue.push(op);
@@ -853,17 +930,12 @@ function enqueueOp(op){
 }
 function scheduleFlush(){
   clearTimeout(flushTimer);
-  flushTimer = setTimeout(flushQueue, 250);
+  flushTimer = setTimeout(flushQueue, 50);
 }
 let queueStuck = false;
-
-/* pendingRefetch: اگر در لحظه‌ای که خودمان در حال ارسال بودیم، رویداد realtime
-   از دستگاه دیگر برسد، آن را دور نمی‌اندازیم؛ فقط علامت می‌زنیم که بعد از
-   خالی شدن صف، یک refetch کامل از سرور بگیریم. این جلوی گم شدن تغییرات
-   همسر/شریک را می‌گیرد. */
 let pendingRefetch = false;
-
 let lastSyncError = null;
+
 async function flushQueue(){
   if(isSyncing) return;
   if(opQueue.length===0){
@@ -903,43 +975,32 @@ async function flushQueue(){
     console.error('sync op failed:', op, e);
     lastSyncError = {
       message: e.message || String(e),
-      details: e.details || null,
-      hint: e.hint || null,
-      code: e.code || null,
-      table: op.table,
-      action: op.action
+      details: e.details || null, hint: e.hint || null, code: e.code || null,
+      table: op.table, action: op.action
     };
     isSyncing = false;
     syncRetryCount++;
     updateSyncBadge('error');
     if(syncRetryCount <= MAX_RETRY){
       const delay = Math.min(1000*Math.pow(2, syncRetryCount), 30000);
-      console.log(`Retry ${syncRetryCount}/${MAX_RETRY} in ${delay}ms`);
       setTimeout(flushQueue, delay);
     } else {
-      console.error('Max retries reached — عملیات در صف محلی باقی می‌ماند.');
       queueStuck = true;
       updateSyncBadge('lost');
     }
   }
 }
 
-/* کاربر دستی «تلاش مجدد» را می‌زند: شمارنده retry صفر می‌شود و فوراً دوباره تلاش می‌شود */
 function retrySyncNow(){
   syncRetryCount = 0;
   queueStuck = false;
   updateSyncBadge();
   flushQueue();
 }
-/* کاربر تصمیم می‌گیرد از عملیات اول صف (که مدام شکست می‌خورد) صرف‌نظر کند تا
-   بقیه صف مسدود نماند. این عملیات محلی حذف می‌شود؛ اگر یک insert/update بود،
-   آن تغییر مشخص روی سرور اعمال نخواهد شد و کاربر باید در صورت نیاز دوباره
-   دستی وارد کند — این هزینه‌ی آگاهانه‌ایست در برابر مسدود ماندن کل صف. */
 function skipStuckOp(){
   if(opQueue.length===0) return;
   const skipped=opQueue.shift();
   saveQueueToLS();
-  console.warn('عملیات رد شد و از صف حذف شد:', skipped);
   syncRetryCount = 0;
   queueStuck = false;
   lastSyncError = null;
@@ -953,7 +1014,7 @@ document.getElementById('syncSkipBtn').addEventListener('click', async ()=>{
 });
 
 /* =========================================================
-   DIFF  — آرایه قدیم/جدید رو مقایسه و عملیات لازم رو صف می‌کنه
+   DIFF
    ========================================================= */
 function diffAndQueue(table, oldArr, newArr, toRowFn){
   const oldMap=new Map((oldArr||[]).map(x=>[x.id,x]));
@@ -1025,11 +1086,10 @@ function copySyncError(){
     navigator.clipboard.writeText(text).then(()=>showMsg('matMsg','متن خطا کپی شد.','ok')).catch(()=>{
       window.prompt('متن خطا را کپی کن:', text);
     });
-  } else {
-    window.prompt('متن خطا را کپی کن:', text);
-  }
+  } else { window.prompt('متن خطا را کپی کن:', text); }
 }
 document.getElementById('syncCopyErrBtn')?.addEventListener('click', copySyncError);
+
 function updateDataCapNotice(){
   const el=document.getElementById('dataCapNotice');
   if(!el) return;
@@ -1037,9 +1097,7 @@ function updateDataCapNotice(){
     document.getElementById('dataCapNoticeText').textContent=
       `فقط ${FETCH_CAP.toLocaleString('en-US')} رکورد اخیرِ فروش/هزینه بارگذاری شده — برای دیدن کل تاریخچه با پشتیبانی تماس بگیرید.`;
     el.style.display='flex';
-  } else {
-    el.style.display='none';
-  }
+  } else { el.style.display='none'; }
 }
 window.addEventListener('online', ()=>{ isConnected=true; if(isDirty()) flushQueue(); updateSyncBadge(); });
 window.addEventListener('offline', ()=>{ isConnected=false; updateSyncBadge('offline'); });
@@ -1051,8 +1109,7 @@ window.addEventListener('beforeunload',(e)=>{
 });
 
 /* =========================================================
-   REALTIME LISTENER — با هر رویداد، فقط همون رکورد در حافظه
-   patch میشه (نه refetch کامل ۵ جدول) — سبک‌تر و مقیاس‌پذیرتر
+   REALTIME LISTENER
    ========================================================= */
 function materialFromRow(r){
   return {id:r.id, date:r.date, itemId:r.item_id, itemName:r.item_name, unit:r.unit,
@@ -1064,7 +1121,8 @@ function saleFromRow(r){
 }
 function unitFromRow(r){ return {id:r.id, name:r.name}; }
 function priceItemFromRow(r){
-  return {id:r.id, name:r.name, unit:unitNameById(r.unit_id)||'', unitPrice:Number(r.unit_price)||0, priceDate:r.price_date};
+  return {id:r.id, name:r.name, unit:unitNameById(r.unit_id)||'', unitPrice:Number(r.unit_price)||0,
+    priceDate:r.price_date, kind:r.kind||'goods'};
 }
 function productFromRowKeepBom(r, existingBom){
   return {id:r.id, name:r.name, sellPrice:Number(r.sell_price)||0, priceDate:r.price_date,
@@ -1075,7 +1133,7 @@ function applyRealtimePatch(table, eventType, newRow, oldRow){
   if(table==='product_bom'){
     const pid=(newRow||oldRow).product_id;
     const prod=(cachedData.products||[]).find(p=>p.id===pid);
-    if(!prod) return; /* محصول مربوطه هنوز لود نشده — با init بعدی درست میشه */
+    if(!prod) return;
     if(eventType==='DELETE'){
       prod.bom=(prod.bom||[]).filter(b=>b.itemId!==oldRow.item_id);
     } else {
@@ -1087,12 +1145,10 @@ function applyRealtimePatch(table, eventType, newRow, oldRow){
     renderProducts(); renderBomEditor(); renderCostAnalysis();
     return;
   }
-
   const arrKey={materials:'materials', products:'products', sales:'sales',
     price_items:'priceItems', units:'units'}[table];
   if(!arrKey) return;
   const arr=cachedData[arrKey]=cachedData[arrKey]||[];
-
   if(eventType==='DELETE'){
     cachedData[arrKey]=arr.filter(x=>x.id!==oldRow.id);
   } else {
@@ -1117,9 +1173,6 @@ function setupRealtimeListener(){
   const channel=supabase.channel('biz_data_changes_v3');
   tables.forEach(t=>{
     channel.on('postgres_changes',{event:'*',schema:'public',table:t},(payload)=>{
-      /* اگر خودمان در حال ارسال تغییراتیم یا صف پر است، به‌جای دور انداختن
-         رویداد، علامت می‌زنیم که بعد از خالی شدن صف یک refetch کامل بگیریم.
-         این تضمین می‌کند تغییرات همسر/شریک در حین sync ما گم نشود. */
       if(isSyncing || opQueue.length>0){
         pendingRefetch = true;
         return;
@@ -1133,7 +1186,7 @@ function setupRealtimeListener(){
 }
 
 /* =========================================================
-   LOAD ALL — همه جدول‌ها موازی fetch میشن (فقط هنگام init)
+   LOAD ALL
    ========================================================= */
 const FETCH_CAP = 3000;
 let dataWasTruncated = false;
@@ -1159,7 +1212,8 @@ async function loadAllFromSupabase(){
   const unitNameMap={}; unitsArr.forEach(u=>unitNameMap[u.id]=u.name);
 
   const priceItemsArr=(itemRes.data||[]).map(r=>({
-    id:r.id, name:r.name, unit:unitNameMap[r.unit_id]||'', unitPrice:Number(r.unit_price)||0, priceDate:r.price_date
+    id:r.id, name:r.name, unit:unitNameMap[r.unit_id]||'', unitPrice:Number(r.unit_price)||0,
+    priceDate:r.price_date, kind:r.kind || 'goods'
   }));
 
   const productIds=(prodRes.data||[]).map(p=>p.id);
@@ -1188,8 +1242,6 @@ async function loadAllFromSupabase(){
   return {materials:materialsArr, products:productsArr, sales:salesArr, priceItems:priceItemsArr, units:unitsArr};
 }
 
-/* refetch سبک: فقط وقتی صدا زده می‌شود که pendingRefetch ست شده باشد.
-   از همان loadAllFromSupabase استفاده می‌کند و سپس UI را refresh می‌کند. */
 async function refreshFromServer(){
   try{
     cachedData = await loadAllFromSupabase();
@@ -1201,14 +1253,14 @@ async function refreshFromServer(){
 }
 
 /* =========================================================
-   STORAGE INTERFACE — بقیه کد اپ همچنان همین توابع رو صدا میزنه
+   STORAGE INTERFACE — با کپی سطحی (fix باگ ذخیره‌نشدن)
    ========================================================= */
 function loadMaterials(){ return (cachedData.materials || []).map(x=>({...x})); }
 function saveMaterials(v){
   diffAndQueue('materials', cachedData.materials, v, materialToRow);
   cachedData.materials=v; saveSnapshotToLS();
 }
-function loadProducts(){ return (cachedData.products||[]).map(p=>({...p, bom:p.bom||[]})); }
+function loadProducts(){ return (cachedData.products||[]).map(p=>({...p, bom:(p.bom||[]).map(b=>({...b}))})); }
 function saveProducts(v){
   const old=cachedData.products||[];
   diffAndQueue('products', old, v, productToRow);
@@ -1236,6 +1288,51 @@ function computeProductCost(product, items){
     const item=list.find(i=>i.id===row.itemId);
     return s + (item ? (Number(row.qty)||0)*item.unitPrice : 0);
   },0);
+}
+/* هزینه‌ی کالای مصرف‌شده در فروش‌ها (بر اساس BOM) */
+function computeConsumedCost(sales, products, priceItems){
+  let total = 0;
+  (sales || []).forEach(s => {
+    const product = (products || []).find(p => p.id === s.productId);
+    if (!product || !product.bom) return;
+    const saleQty = Number(s.qty) || 0;
+    product.bom.forEach(b => {
+      const item = (priceItems || []).find(i => i.id === b.itemId);
+      if (!item) return;
+      total += (Number(b.qty) || 0) * (Number(item.unitPrice) || 0) * saleQty;
+    });
+  });
+  return total;
+}
+/* ارزش انبار فعلی — فقط آیتم‌های کالا */
+function computeInventoryValue(priceItems, materials, sales, products){
+  const items = priceItems || [];
+  const goodsItems = items.filter(i => (i.kind || 'goods') !== 'service');
+  const goodsIds = new Set(goodsItems.map(i => i.id));
+
+  const purchased = {};
+  (materials || []).forEach(m => {
+    if (!m.itemId || !goodsIds.has(m.itemId)) return;
+    purchased[m.itemId] = (purchased[m.itemId] || 0) + (Number(m.qty) || 0);
+  });
+
+  const consumed = {};
+  (sales || []).forEach(s => {
+    const product = (products || []).find(p => p.id === s.productId);
+    if (!product || !product.bom) return;
+    const saleQty = Number(s.qty) || 0;
+    product.bom.forEach(b => {
+      if (!b.itemId || !goodsIds.has(b.itemId)) return;
+      consumed[b.itemId] = (consumed[b.itemId] || 0) + (Number(b.qty) || 0) * saleQty;
+    });
+  });
+
+  let totalValue = 0;
+  goodsItems.forEach(item => {
+    const balance = (purchased[item.id] || 0) - (consumed[item.id] || 0);
+    totalValue += balance * (Number(item.unitPrice) || 0);
+  });
+  return totalValue;
 }
 function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; }
 function money(n){ return (Number(n)||0).toLocaleString('en-US'); }
@@ -1289,7 +1386,6 @@ function jalaliMonthLabel(key){
   return JMONTHS[jm-1]+' '+jy;
 }
 function todayISO(){ const d=new Date(); const off=d.getTimezoneOffset(); const local=new Date(d.getTime()-off*60000); return local.toISOString().slice(0,10); }
-
 function jalaliToGregorian(jy,jm,jd){
   jy += 1595;
   let days = -355668 + (365 * jy) + Math.floor(jy / 33) * 8 + Math.floor(((jy % 33) + 3) / 4) + jd + (jm < 7 ? (jm - 1) * 31 : ((jm - 7) * 30) + 186);
@@ -1314,9 +1410,8 @@ function jalaliMonthLength(jy,jm){
   return Math.round((d2-d1)/86400000);
 }
 
-/* ---------- single-field jalali date picker ---------- */
+/* ---------- date picker ---------- */
 let dpState={el:null,jy:0,jm:0};
-
 function initDateField(inputId, defaultToday){
   const el=document.getElementById(inputId);
   el.addEventListener('click',()=>openDatePicker(el));
@@ -1335,7 +1430,6 @@ function clearDateField(inputId){
 document.querySelectorAll('[data-clear]').forEach(btn=>{
   btn.addEventListener('click',()=>clearDateField(btn.dataset.clear));
 });
-
 function openDatePicker(el){
   const iso = el.dataset.iso || todayISO();
   const p=jalaliParts(iso);
@@ -1414,8 +1508,9 @@ function showMsg(id,text,cls){
   el.className='msg show '+cls;
   setTimeout(()=>hideMsg(id), cls==='ok' ? 3000 : 6000);
 }
+function hideMsg(id){ const el=document.getElementById(id); el.className='msg'; }
 
-/* ---------- custom confirm modal (جایگزین confirm() بومی) ---------- */
+/* ---------- confirm modal ---------- */
 function showConfirm(message){
   return new Promise((resolve)=>{
     const overlay=document.getElementById('confirmOverlay');
@@ -1442,11 +1537,8 @@ function showConfirm(message){
   });
 }
 
-function hideMsg(id){ const el=document.getElementById(id); el.className='msg'; }
-
 /* ---------- tabs + more-menu ---------- */
-const MENU_TABS = ['products','costing','analysis'];
-
+const MENU_TABS = ['products','costing','inventory','analysis'];
 function closeMoreMenu(){
   document.getElementById('moreMenu').classList.remove('open');
   document.getElementById('moreMenuBtn').classList.remove('open');
@@ -1464,16 +1556,12 @@ document.getElementById('moreMenuBtn').addEventListener('click',(e)=>{
   if(isOpen) setTimeout(()=>document.addEventListener('mousedown', moreMenuOutside),0);
   else closeMoreMenu();
 });
-
-/* Direct tab buttons (هزینه‌ها + فروش) */
 document.querySelectorAll('nav.tabs > button[data-tab]').forEach(btn=>{
   btn.addEventListener('click',()=>{ switchTab(btn.dataset.tab); });
 });
-/* Menu tab buttons */
 document.querySelectorAll('.tabs-more-menu button[data-tab]').forEach(btn=>{
   btn.addEventListener('click',()=>{ closeMoreMenu(); switchTab(btn.dataset.tab); });
 });
-
 function switchTab(name){
   closeDatePicker();
   document.querySelectorAll('nav.tabs > button[data-tab]').forEach(b=>{
@@ -1489,6 +1577,7 @@ function switchTab(name){
   if(name==='expenses'){ populateMatItemSelect(); renderMaterials(); }
   if(name==='products'){ renderProducts(); renderBomEditor(); renderCostAnalysis(); }
   if(name==='costing'){ renderUnits(); renderPriceItems(); }
+  if(name==='inventory') renderInventory();
   if(name==='sales') renderSales();
   if(name==='analysis') renderAnalysis();
 }
@@ -1502,25 +1591,51 @@ function refreshAll(){
   renderPriceItems();
   renderBomEditor();
   renderCostAnalysis();
+  renderInventory();
   renderSales();
   renderAnalysis();
   renderTopSummary();
 }
 
-/* ---------- top summary strip (all-time) ---------- */
+/* ---------- top summary (all-time) ---------- */
 function renderTopSummary(){
   const sales=loadSales();
   const materials=loadMaterials();
+  const products=loadProducts();
+  const priceItems=loadPriceItems();
+
   const revenue=sales.reduce((s,r)=>s+r.qty*r.unitPrice,0);
   const matCost=materials.reduce((s,r)=>s+(Number(r.cost)||0),0);
   const net=revenue-matCost;
+
+  const consumedCost = computeConsumedCost(sales, products, priceItems);
+  const expected = revenue - consumedCost;
+  const inventoryValue = computeInventoryValue(priceItems, materials, sales, products);
+  const totalWealth = net + inventoryValue;
+
   document.getElementById('sumSales').textContent=sales.length.toLocaleString('en-US');
   document.getElementById('sumRevenue').textContent=money(revenue);
   document.getElementById('sumCost').textContent=money(matCost);
   document.getElementById('sumProfit').textContent=money(net);
+  document.getElementById('sumExpected').textContent=money(expected);
+  document.getElementById('sumExpectedCost').textContent=money(consumedCost);
+  document.getElementById('sumInventory').textContent=money(inventoryValue);
+  document.getElementById('sumWealth').textContent=money(totalWealth);
+
   const cell=document.getElementById('sumProfitCell');
   cell.classList.toggle('profit',net>=0);
   cell.classList.toggle('loss',net<0);
+
+  const expCell=document.getElementById('sumExpectedCell');
+  expCell.classList.toggle('profit',expected>=0);
+  expCell.classList.toggle('loss',expected<0);
+
+  const invCell=document.getElementById('sumInventoryCell');
+  invCell.classList.toggle('profit',inventoryValue>=0);
+
+  const wealthCell=document.getElementById('sumWealthCell');
+  wealthCell.classList.toggle('profit',totalWealth>=0);
+  wealthCell.classList.toggle('loss',totalWealth<0);
 }
 
 /* =================== MATERIALS =================== */
@@ -1537,7 +1652,13 @@ function populateMatItemSelect(){
   if(items.length===0){
     const o=document.createElement('option'); o.value=''; o.textContent='ابتدا در تب «فهرست بها» آیتم اضافه کن'; sel.appendChild(o);
   } else {
-    items.forEach(i=>{ const o=document.createElement('option'); o.value=i.id; o.textContent=i.name; sel.appendChild(o); });
+    items.forEach(i=>{
+      const kindTag = i.kind==='service' ? ' [خدمات]' : ' [کالا]';
+      const o=document.createElement('option');
+      o.value=i.id;
+      o.textContent=i.name+kindTag;
+      sel.appendChild(o);
+    });
   }
   if([...sel.options].some(o=>o.value===cur)) sel.value=cur;
   updateMatItemDerived();
@@ -1581,6 +1702,10 @@ function renderMaterials(){
   const ff=getDateFieldValue(document.getElementById('matFFrom'));
   const fto=getDateFieldValue(document.getElementById('matFTo'));
   const fs=document.getElementById('matFSearch').value.trim().toLowerCase();
+  const priceItems = loadPriceItems();
+  const itemKindMap = {};
+  priceItems.forEach(i => { itemKindMap[i.id] = i.kind || 'goods'; });
+
   const filtered=all.filter(r=>{
     if(ff && r.date<ff) return false;
     if(fto && r.date>fto) return false;
@@ -1598,10 +1723,15 @@ function renderMaterials(){
   let sum=0;
   filtered.forEach(r=>{ sum+=Number(r.cost)||0; });
   pageItems.forEach(r=>{
+    const kind = itemKindMap[r.itemId] || 'goods';
+    const kindBadge = kind==='service'
+      ? '<span class="badge badge-service">🔧 خدمات</span>'
+      : '<span class="badge badge-goods">🧱 کالا</span>';
     const tr=document.createElement('tr');
     tr.innerHTML=`
       <td>${jalaliLong(r.date)}</td>
       <td>${escapeHtml(r.itemName||r.title||'—')}</td>
+      <td>${kindBadge}</td>
       <td class="mono">${r.qty? escapeHtml(String(r.qty))+' '+escapeHtml(r.unit||'') : '—'}</td>
       <td class="mono">${money(r.cost)}</td>
       <td><div class="row-actions">
@@ -1744,7 +1874,7 @@ async function deleteProductPhotoByUrl(url){
   const path=photoPathFromUrl(url);
   if(!path) return;
   try{ await supabase.storage.from(PHOTO_BUCKET).remove([path]); }
-  catch(e){ console.warn('حذف عکس از Storage ناموفق بود (نادیده گرفته شد):', e); }
+  catch(e){ console.warn('حذف عکس از Storage ناموفق بود:', e); }
 }
 document.getElementById('prodPhotoInput').addEventListener('change',async function(e){
   const file=e.target.files[0];
@@ -1776,7 +1906,6 @@ function buildImgEl(url){
   img.src=url;
   return img;
 }
-
 function renderPhotoPreview(url){
   const box=document.getElementById('prodPhotoPreview');
   const removeBtn=document.getElementById('prodPhotoRemove');
@@ -1901,11 +2030,10 @@ document.getElementById('prodForm').addEventListener('submit',function(e){
   renderProducts(); populateProductSelects(); renderCostAnalysis();
 });
 
-/* =================== COSTING: UNITS + PRICE LIST + COST ANALYSIS =================== */
+/* =================== UNITS + PRICE LIST =================== */
 let priceItemEditingId=null;
 let currentBomRows=[];
 
-/* --- units --- */
 function renderUnits(){
   const all=loadUnits();
   const body=document.getElementById('unitBody');
@@ -1953,7 +2081,6 @@ function populatePriceItemUnitSelect(){
   if([...sel.options].some(o=>o.value===cur)) sel.value=cur;
 }
 
-/* --- price list --- */
 initDateField('priceItemDate', true);
 function renderPriceItems(){
   const all=loadPriceItems().slice().sort((a,b)=>a.name.localeCompare(b.name,'fa'));
@@ -1961,9 +2088,14 @@ function renderPriceItems(){
   body.innerHTML='';
   document.getElementById('priceItemEmpty').style.display=all.length?'none':'block';
   all.forEach(r=>{
+    const kind = r.kind || 'goods';
+    const kindBadge = kind==='service'
+      ? '<span class="badge badge-service">🔧 خدمات</span>'
+      : '<span class="badge badge-goods">🧱 کالا</span>';
     const tr=document.createElement('tr');
     tr.innerHTML=`
       <td>${escapeHtml(r.name)}</td>
+      <td>${kindBadge}</td>
       <td>${escapeHtml(r.unit)}</td>
       <td class="mono">${money(r.unitPrice)}</td>
       <td>${r.priceDate ? jalaliLong(r.priceDate) : '—'}</td>
@@ -1982,6 +2114,7 @@ function editPriceItem(id){
   priceItemEditingId=id;
   document.getElementById('priceItemId').value=id;
   document.getElementById('priceItemName').value=r.name;
+  document.getElementById('priceItemKind').value = r.kind || 'goods';
   populatePriceItemUnitSelect();
   document.getElementById('priceItemUnit').value=r.unit;
   document.getElementById('priceItemUnitPrice').value=r.unitPrice;
@@ -2013,6 +2146,7 @@ async function deletePriceItem(id){
 document.getElementById('priceItemForm').addEventListener('submit',function(e){
   e.preventDefault();
   const name=document.getElementById('priceItemName').value.trim();
+  const kind=document.getElementById('priceItemKind').value;
   const unit=document.getElementById('priceItemUnit').value;
   const unitPrice=document.getElementById('priceItemUnitPrice').value;
   const priceDate=getDateFieldValue(document.getElementById('priceItemDate'));
@@ -2021,11 +2155,11 @@ document.getElementById('priceItemForm').addEventListener('submit',function(e){
   const all=loadPriceItems();
   if(priceItemEditingId){
     const idx=all.findIndex(r=>r.id===priceItemEditingId);
-    if(idx>-1) all[idx]={...all[idx], name, unit, unitPrice:Number(unitPrice), priceDate};
+    if(idx>-1) all[idx]={...all[idx], name, kind, unit, unitPrice:Number(unitPrice), priceDate};
     savePriceItems(all);
     showMsg('priceItemMsg','آیتم با موفقیت به‌روزرسانی شد.','ok');
   } else {
-    all.push({id:uid(), name, unit, unitPrice:Number(unitPrice), priceDate});
+    all.push({id:uid(), name, kind, unit, unitPrice:Number(unitPrice), priceDate});
     savePriceItems(all);
     showMsg('priceItemMsg','آیتم با موفقیت ثبت شد.','ok');
   }
@@ -2033,8 +2167,7 @@ document.getElementById('priceItemForm').addEventListener('submit',function(e){
   renderPriceItems(); populateMatItemSelect(); renderBomEditor(); renderCostAnalysis();
 });
 
-/* --- BOM builder --- */
-/* --- BOM builder --- */
+/* --- BOM builder (بدون re-render در هر keystroke) --- */
 function renderBomEditor(){
   const wrap=document.getElementById('prodBomRows');
   if(!wrap) return;
@@ -2052,7 +2185,10 @@ function renderBomEditor(){
   currentBomRows.forEach((row,idx)=>{
     const item=items.find(i=>i.id===row.itemId);
     const cost=item ? (Number(row.qty)||0)*item.unitPrice : 0;
-    const options=items.map(i=>`<option value="${i.id}" ${i.id===row.itemId?'selected':''}>${escapeHtml(i.name)} (${escapeHtml(i.unit)})</option>`).join('');
+    const options=items.map(i=>{
+      const kindTag = i.kind === 'service' ? ' [خدمات]' : ' [کالا]';
+      return `<option value="${i.id}" ${i.id===row.itemId?'selected':''}>${escapeHtml(i.name)}${kindTag} (${escapeHtml(i.unit)})</option>`;
+    }).join('');
     const div=document.createElement('div');
     div.className='bom-row';
     div.innerHTML=`
@@ -2063,33 +2199,27 @@ function renderBomEditor(){
     wrap.appendChild(div);
   });
 
-  /* فقط انتخاب آیتم → کل ردیف بازسازی می‌شود (چون هزینه واحد عوض می‌شود) */
   wrap.querySelectorAll('.bom-item-select').forEach(el=>el.addEventListener('change',function(){
     currentBomRows[Number(this.dataset.idx)].itemId=this.value;
     renderBomEditor();
   }));
 
-  /* ورودی مقدار → فقط مقدار را ذخیره کن، DOM را دست نزن، فقط هزینه را به‌روز کن */
   wrap.querySelectorAll('.bom-qty-input').forEach(el=>el.addEventListener('input',function(){
     const idx=Number(this.dataset.idx);
-    // فقط کاراکترهای مجاز: عدد و یک نقطه اعشار
     let v = this.value.replace(/[^\d.]/g, '');
     const firstDot = v.indexOf('.');
     if (firstDot !== -1) {
-      // نقطه‌های اضافی را حذف کن
       v = v.slice(0, firstDot+1) + v.slice(firstDot+1).replace(/\./g, '');
     }
     if (v !== this.value) this.value = v;
 
     currentBomRows[idx].qty = v;
 
-    // هزینه‌ی همان ردیف را به‌روز کن (بدون بازسازی کل DOM)
     const item = items.find(i => i.id === currentBomRows[idx].itemId);
     const rowCost = item ? (Number(v)||0) * item.unitPrice : 0;
     const costEl = this.parentElement.querySelector('.bom-cost');
     if (costEl) costEl.textContent = money(rowCost);
 
-    // جمع کل را هم به‌روز کن
     updateBomTotal();
   }));
 
@@ -2100,8 +2230,6 @@ function renderBomEditor(){
 
   updateBomTotal();
 }
-
-/* فقط جمع کل را بازمحاسبه و متن را به‌روز می‌کند (بدون بازسازی DOM) */
 function updateBomTotal(){
   const items = loadPriceItems();
   const total = currentBomRows.reduce((s,row)=>{
@@ -2111,6 +2239,7 @@ function updateBomTotal(){
   const totalEl = document.getElementById('prodBomTotal');
   if (totalEl) totalEl.textContent = money(total) + ' تومان';
 }
+
 /* --- cost analysis --- */
 function renderCostAnalysis(){
   const items=loadPriceItems();
@@ -2132,6 +2261,104 @@ function renderCostAnalysis(){
     body.appendChild(tr);
   });
 }
+
+/* =================== INVENTORY =================== */
+const INVENTORY_LOW_THRESHOLD = 5;
+
+function computeInventory(){
+  const items = loadPriceItems();
+  const materials = loadMaterials();
+  const sales = loadSales();
+  const products = loadProducts();
+
+  const goodsItems = items.filter(i => (i.kind || 'goods') === 'goods');
+  const goodsIds = new Set(goodsItems.map(i => i.id));
+
+  const purchasedMap = {};
+  materials.forEach(m => {
+    if (!m.itemId || !goodsIds.has(m.itemId)) return;
+    purchasedMap[m.itemId] = (purchasedMap[m.itemId] || 0) + (Number(m.qty) || 0);
+  });
+
+  const consumedMap = {};
+  sales.forEach(s => {
+    const product = products.find(p => p.id === s.productId);
+    if (!product || !product.bom || product.bom.length === 0) return;
+    const saleQty = Number(s.qty) || 0;
+    product.bom.forEach(b => {
+      if (!b.itemId || !goodsIds.has(b.itemId)) return;
+      const perUnit = Number(b.qty) || 0;
+      if (perUnit === 0) return;
+      consumedMap[b.itemId] = (consumedMap[b.itemId] || 0) + (perUnit * saleQty);
+    });
+  });
+
+  return goodsItems.map(item => {
+    const purchased = purchasedMap[item.id] || 0;
+    const consumed  = consumedMap[item.id]  || 0;
+    const balance   = purchased - consumed;
+    const value     = balance * (Number(item.unitPrice) || 0);
+    return {
+      id: item.id, name: item.name, unit: item.unit,
+      unitPrice: Number(item.unitPrice) || 0,
+      purchased, consumed, balance, value
+    };
+  });
+}
+
+function renderInventory(){
+  const all = computeInventory();
+  const search = (document.getElementById('invSearch').value || '').trim().toLowerCase();
+  const mode   = document.getElementById('invFilterMode').value;
+
+  let filtered = all.filter(r => {
+    if (search && !r.name.toLowerCase().includes(search)) return false;
+    if (mode === 'low' && r.balance > INVENTORY_LOW_THRESHOLD) return false;
+    if (mode === 'positive' && r.balance <= 0) return false;
+    if (mode === 'negative' && r.balance >= 0) return false;
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    if (a.balance < 0 && b.balance >= 0) return -1;
+    if (a.balance >= 0 && b.balance < 0) return 1;
+    return a.balance - b.balance;
+  });
+
+  const totalValue = all.reduce((s, r) => s + r.value, 0);
+  const lowCount   = all.filter(r => r.balance <= INVENTORY_LOW_THRESHOLD && r.balance >= 0).length;
+  const negCount   = all.filter(r => r.balance < 0).length;
+
+  document.getElementById('invTotalItems').textContent = all.length.toLocaleString('en-US');
+  document.getElementById('invTotalValue').textContent = money(totalValue);
+  document.getElementById('invLowCount').textContent   = lowCount.toLocaleString('en-US');
+  document.getElementById('invNegCount').textContent   = negCount.toLocaleString('en-US');
+
+  const body = document.getElementById('invBody');
+  body.innerHTML = '';
+  document.getElementById('invEmpty').style.display = filtered.length ? 'none' : 'block';
+
+  filtered.forEach(r => {
+    let balanceClass = '';
+    if (r.balance < 0)             balanceClass = 'profit-neg';
+    else if (r.balance <= INVENTORY_LOW_THRESHOLD) balanceClass = 'profit-neg';
+    else                            balanceClass = 'profit-pos';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(r.name)}</td>
+      <td>${escapeHtml(r.unit || '—')}</td>
+      <td class="mono">${r.purchased.toLocaleString('en-US')}</td>
+      <td class="mono">${r.consumed.toLocaleString('en-US')}</td>
+      <td class="mono ${balanceClass}"><b>${r.balance.toLocaleString('en-US')}</b></td>
+      <td class="mono">${money(r.unitPrice)}</td>
+      <td class="mono">${money(r.value)}</td>
+    `;
+    body.appendChild(tr);
+  });
+}
+document.getElementById('invSearch').addEventListener('input', debounce(() => renderInventory(), 280));
+document.getElementById('invFilterMode').addEventListener('change', () => renderInventory());
 
 /* =================== SALES =================== */
 let saleEditingId=null;
@@ -2270,28 +2497,58 @@ document.getElementById('saleForm').addEventListener('submit',function(e){
 });
 
 /* =================== ANALYSIS =================== */
+let analysisMode = 'cash';
 initDateField('anFrom', false);
 initDateField('anTo', false);
 ['anFrom','anTo'].forEach(id=>document.getElementById(id).addEventListener('change',renderAnalysis));
+document.getElementById('anModeCash').addEventListener('click', () => {
+  analysisMode = 'cash';
+  renderAnalysis();
+});
+document.getElementById('anModeExpected').addEventListener('click', () => {
+  analysisMode = 'expected';
+  renderAnalysis();
+});
 
 function renderAnalysis(){
   const from=getDateFieldValue(document.getElementById('anFrom'));
   const to=getDateFieldValue(document.getElementById('anTo'));
   const sales=loadSales().filter(r=>(!from||r.date>=from)&&(!to||r.date<=to));
   const materials=loadMaterials().filter(r=>(!from||r.date>=from)&&(!to||r.date<=to));
+  const products=loadProducts();
+  const priceItems=loadPriceItems();
 
   const revenue=sales.reduce((s,r)=>s+r.qty*r.unitPrice,0);
   const matCost=materials.reduce((s,r)=>s+(Number(r.cost)||0),0);
   const net=revenue-matCost;
 
+  const consumedCost = computeConsumedCost(sales, products, priceItems);
+  const expected = revenue - consumedCost;
+  const inventoryValue = computeInventoryValue(priceItems, loadMaterials(), loadSales(), products);
+  const totalWealth = net + inventoryValue;
+
   document.getElementById('anRevenue').textContent=money(revenue);
   document.getElementById('anMaterials').textContent=money(matCost);
   document.getElementById('anNet').textContent=money(net);
   document.getElementById('anMargin').textContent = revenue>0 ? Math.round(net/revenue*100)+'%' : '—';
+  document.getElementById('anConsumedCost').textContent=money(consumedCost);
+  document.getElementById('anExpected').textContent=money(expected);
+  document.getElementById('anInventoryValue').textContent=money(inventoryValue);
+  document.getElementById('anTotalWealth').textContent=money(totalWealth);
+
   const netCard=document.getElementById('anNetCard');
   netCard.classList.toggle('profit',net>=0);
   netCard.classList.toggle('loss',net<0);
 
+  const expCard=document.getElementById('anExpectedCard');
+  expCard.classList.toggle('profit',expected>=0);
+  expCard.classList.toggle('loss',expected<0);
+
+  const invCard=document.getElementById('anInventoryValueCard');
+  invCard.classList.toggle('profit',inventoryValue>=0);
+  invCard.classList.toggle('loss',inventoryValue<0);
+
+  /* فروش به تفکیک محصول */
   const byProd={};
   sales.forEach(r=>{
     const key=r.productName||'—';
@@ -2315,25 +2572,49 @@ function renderAnalysis(){
     byProdEl.appendChild(row);
   });
 
+  renderMonthlyProfit(sales, materials, products, priceItems);
+}
+
+function renderMonthlyProfit(sales, materials, products, priceItems){
   const byMonth={};
   sales.forEach(r=>{
     const key=jalaliMonthKey(r.date);
-    if(!byMonth[key]) byMonth[key]={revenue:0,cost:0};
-    byMonth[key].revenue+=r.qty*r.unitPrice;
+    if(!byMonth[key]) byMonth[key]={revenue:0,cashCost:0,consumedCost:0};
+    byMonth[key].revenue += r.qty*r.unitPrice;
   });
   materials.forEach(r=>{
     const key=jalaliMonthKey(r.date);
-    if(!byMonth[key]) byMonth[key]={revenue:0,cost:0};
-    byMonth[key].cost+=Number(r.cost)||0;
+    if(!byMonth[key]) byMonth[key]={revenue:0,cashCost:0,consumedCost:0};
+    byMonth[key].cashCost += Number(r.cost)||0;
   });
-  const monthEntries=Object.entries(byMonth).map(([key,v])=>({key,profit:v.revenue-v.cost,...v})).sort((a,b)=>b.key.localeCompare(a.key));
-  const maxAbsMonth=Math.max(1,...monthEntries.map(e=>Math.abs(e.profit)));
-  const byMonthEl=document.getElementById('anByMonth');
+  sales.forEach(s=>{
+    const product = products.find(p => p.id === s.productId);
+    if(!product || !product.bom) return;
+    const saleQty = Number(s.qty) || 0;
+    const key = jalaliMonthKey(s.date);
+    if(!byMonth[key]) byMonth[key]={revenue:0,cashCost:0,consumedCost:0};
+    product.bom.forEach(b => {
+      const item = priceItems.find(i => i.id === b.itemId);
+      if(!item) return;
+      byMonth[key].consumedCost += (Number(b.qty)||0) * (Number(item.unitPrice)||0) * saleQty;
+    });
+  });
+
+  const monthEntries = Object.entries(byMonth).map(([key,v])=>{
+    const cashProfit = v.revenue - v.cashCost;
+    const expectedProfit = v.revenue - v.consumedCost;
+    const profit = analysisMode === 'expected' ? expectedProfit : cashProfit;
+    return {key, profit, cashProfit, expectedProfit};
+  }).sort((a,b)=>b.key.localeCompare(a.key));
+
+  const maxAbsMonth = Math.max(1, ...monthEntries.map(e => Math.abs(e.profit)));
+  const byMonthEl = document.getElementById('anByMonth');
   byMonthEl.innerHTML='';
-  document.getElementById('anByMonthEmpty').style.display=monthEntries.length?'none':'block';
+  document.getElementById('anByMonthEmpty').style.display = monthEntries.length ? 'none' : 'block';
+
   monthEntries.forEach(e=>{
-    const pct=Math.max(4,Math.round(Math.abs(e.profit)/maxAbsMonth*100));
-    const row=document.createElement('div');
+    const pct = Math.max(4, Math.round(Math.abs(e.profit)/maxAbsMonth*100));
+    const row = document.createElement('div');
     row.className='bar-row';
     row.innerHTML=`
       <div class="name">${jalaliMonthLabel(e.key)}</div>
@@ -2341,29 +2622,48 @@ function renderAnalysis(){
       <div class="bar-val ${e.profit>=0?'profit-pos':'profit-neg'}">${money(e.profit)}</div>`;
     byMonthEl.appendChild(row);
   });
+
+  /* به‌روزرسانی استایل دکمه‌های toggle */
+  const btnCash = document.getElementById('anModeCash');
+  const btnExp = document.getElementById('anModeExpected');
+  if(analysisMode === 'cash'){
+    btnCash.style.background = 'var(--gold)';
+    btnCash.style.color = '#241a06';
+    btnCash.classList.remove('btn-ghost');
+    btnCash.classList.add('btn-primary');
+    btnExp.style.background = 'transparent';
+    btnExp.style.color = 'var(--muted)';
+    btnExp.classList.add('btn-ghost');
+    btnExp.classList.remove('btn-primary');
+  } else {
+    btnExp.style.background = 'var(--gold)';
+    btnExp.style.color = '#241a06';
+    btnExp.classList.remove('btn-ghost');
+    btnExp.classList.add('btn-primary');
+    btnCash.style.background = 'transparent';
+    btnCash.style.color = 'var(--muted)';
+    btnCash.classList.add('btn-ghost');
+    btnCash.classList.remove('btn-primary');
+  }
 }
 
 /* ---------- init ---------- */
 async function initApp(){
   updateSyncBadge();
-
   const snapshot = loadSnapshotFromLS();
   if(snapshot) cachedData = snapshot;
-
   try{
     cachedData = await loadAllFromSupabase();
     saveSnapshotToLS();
   }catch(e){
-    console.error('اتصال اولیه به Supabase ناموفق بود — استفاده از نسخه محلی:', e);
+    console.error('اتصال اولیه به Supabase ناموفق بود:', e);
     if(!snapshot) cachedData = emptyData();
     updateSyncBadge('offline');
   }
-
   if(!cachedData.units || cachedData.units.length===0){
     const newUnits = DEFAULT_UNITS.map(name=>({id:uid(), name}));
     saveUnits(newUnits);
   }
-
   populateProductSelects();
   renderUnits();
   renderPriceItems();
@@ -2372,11 +2672,11 @@ async function initApp(){
   renderProducts();
   renderBomEditor();
   renderCostAnalysis();
+  renderInventory();
   renderSales();
   renderAnalysis();
   renderTopSummary();
   setupRealtimeListener();
-
   if(isDirty()) flushQueue();
 }
 
@@ -2385,7 +2685,6 @@ async function initApp(){
    ========================================================= */
 let appInitialized = false;
 let authMode = 'login';
-
 function setAuthMode(mode){
   authMode = mode;
   document.getElementById('authSubtitle').textContent =
@@ -2397,7 +2696,6 @@ function setAuthMode(mode){
 document.getElementById('authToggleBtn').addEventListener('click', ()=>{
   setAuthMode(authMode==='login' ? 'signup' : 'login');
 });
-
 document.getElementById('authForm').addEventListener('submit', async function(e){
   e.preventDefault();
   const email = document.getElementById('authEmail').value.trim();
@@ -2420,15 +2718,10 @@ document.getElementById('authForm').addEventListener('submit', async function(e)
     submitBtn.disabled = false;
   }
 });
-
 document.getElementById('logoutBtn').addEventListener('click', async ()=>{
   await supabase.auth.signOut();
   location.reload();
 });
-
-/* از upsert به‌جای insert استفاده می‌کنیم تا اگر هر دو نفر همزمان «اولین»
-   کاربر بودند، خطای duplicate key نگیریم. نیاز به unique constraint روی
-   (business_id, user_id) دارد که در اسکریپت SQL اضافه می‌شود. */
 async function ensureBusinessMembership(user){
   try{
     const {data, error}=await supabase.from('business_members')
@@ -2450,7 +2743,6 @@ async function ensureBusinessMembership(user){
     return false;
   }catch(e){ console.warn('ensureBusinessMembership error:', e); return false; }
 }
-
 async function handleAuthed(user){
   const hasAccess = await ensureBusinessMembership(user);
   if(!hasAccess){
@@ -2468,11 +2760,10 @@ async function handleAuthed(user){
 function handleSignedOut(){
   document.getElementById('authOverlay').classList.add('open');
 }
-
 supabase.auth.onAuthStateChange((event, session)=>{
   if(session && session.user) handleAuthed(session.user);
   else handleSignedOut();
 });
 </script>
 </body>
-</html>
+  </html>
