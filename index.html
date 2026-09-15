@@ -1,0 +1,2441 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>دفتر کسب‌وکار</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.2"></script>
+<style>
+  :root{
+    --bg:#11151b;
+    --panel:#181f28;
+    --panel-alt:#1e2731;
+    --border:#2a3440;
+    --text:#eef1f4;
+    --muted:#8b96a3;
+    --gold:#c9922f;
+    --gold-dim:#6b4f1f;
+    --green:#4caf7d;
+    --green-dim:#1f3d2d;
+    --red:#e0575f;
+    --red-dim:#3d2222;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);color:var(--text);font-family:'Vazirmatn',sans-serif;
+    min-height:100vh;padding-bottom:40px;
+  }
+  .mono{font-family:'JetBrains Mono',monospace;direction:ltr;unicode-bidi:isolate;}
+  a{color:inherit;}
+
+  header.appbar{
+    background:linear-gradient(180deg,#1a2129,#11151b);
+    border-bottom:1px solid var(--border);padding:18px 20px 0;
+    position:sticky;top:0;z-index:20;
+  }
+  .appbar-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  #logoutBtn{
+    background:none;border:1px solid var(--border);color:var(--muted);
+    border-radius:8px;padding:6px 12px;font-family:inherit;font-size:12.5px;cursor:pointer;
+  }
+  #logoutBtn:hover{color:var(--text);border-color:var(--muted);}
+  .appbar h1{font-size:19px;margin:0;font-weight:800;letter-spacing:.2px;}
+  .appbar h1 span{color:var(--gold);}
+  .appbar .sub{color:var(--muted);font-size:12px;margin-top:2px;}
+  .sync-badge{display:inline-block;font-size:11px;padding:3px 8px;border-radius:6px;margin-top:4px;background:var(--green-dim);color:var(--green);}
+  .sync-badge.syncing{background:var(--gold-dim);color:var(--gold);}
+  .sync-badge.error{background:var(--red-dim);color:var(--red);}
+  .sync-stuck-bar{
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;
+    background:var(--red-dim);border:1px solid var(--red);border-radius:8px;
+    padding:8px 10px;font-size:12.5px;color:var(--text);
+  }
+  .sync-stuck-bar span{flex:1;min-width:160px;}
+
+  .receipt{
+    margin-top:14px;background:var(--panel);border:1px solid var(--border);border-radius:10px 10px 0 0;
+    padding:14px 12px 16px;position:relative;
+  }
+  .receipt::after{
+    content:"";display:block;position:absolute;left:0;right:0;bottom:-7px;height:14px;
+    background-image:radial-gradient(circle at 7px 7px, var(--bg) 6px, transparent 7px);
+    background-size:14px 14px;background-position:0 0;
+  }
+  .receipt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;}
+  @media(max-width:520px){.receipt-grid{grid-template-columns:repeat(2,1fr);}}
+  .receipt-cell{text-align:center;padding:6px 4px;border-right:1px dashed var(--border);}
+  .receipt-cell:first-child{border-right:none;}
+  @media(max-width:520px){
+    .receipt-cell:nth-child(2n+1){border-right:none;}
+    .receipt-cell:nth-child(-n+2){border-bottom:1px dashed var(--border);padding-bottom:10px;}
+    .receipt-cell:nth-child(n+3){padding-top:10px;}
+  }
+  .receipt-cell .val{
+    font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--text);
+    direction:ltr;letter-spacing:.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .receipt-cell.profit .val{color:var(--green);}
+  .receipt-cell.loss .val{color:var(--red);}
+  .receipt-cell .lbl{font-size:10.5px;color:var(--muted);margin-top:3px;letter-spacing:.2px;}
+
+  nav.tabs{display:flex;align-items:flex-end;gap:4px;overflow-x:visible;padding:10px 20px 0;scrollbar-width:none;}
+  nav.tabs::-webkit-scrollbar{display:none;}
+  nav.tabs > button{
+    background:var(--panel);color:var(--muted);border:1px solid var(--border);border-bottom:none;
+    padding:9px 16px 11px;border-radius:8px 8px 0 0;font-family:inherit;font-size:13.5px;
+    cursor:pointer;white-space:nowrap;font-weight:700;position:relative;top:1px;
+    transition:color .15s ease, background .15s ease;
+  }
+  nav.tabs > button:hover{color:var(--text);}
+  nav.tabs > button.active{background:var(--panel-alt);color:var(--text);box-shadow:inset 0 2px 0 var(--gold);}
+
+  /* ---- More Menu ---- */
+  .tabs-more-wrap{position:relative;margin-right:auto;}
+  .tabs-more-btn{
+    background:var(--panel);color:var(--muted);border:1px solid var(--border);border-bottom:none;
+    padding:9px 14px 11px;border-radius:8px 8px 0 0;font-family:inherit;font-size:13px;
+    cursor:pointer;white-space:nowrap;font-weight:600;position:relative;top:1px;
+    transition:color .15s ease, background .15s ease;
+  }
+  .tabs-more-btn:hover,.tabs-more-btn.open{color:var(--text);background:var(--panel-alt);}
+  .tabs-more-btn.menu-active{color:var(--text);background:var(--panel-alt);box-shadow:inset 0 2px 0 var(--gold);}
+  .tabs-more-menu{
+    display:none;position:absolute;left:0;top:calc(100% + 2px);
+    background:var(--panel-alt);border:1px solid var(--border);border-radius:10px;
+    padding:6px;min-width:180px;z-index:50;
+    box-shadow:0 12px 28px rgba(0,0,0,.45);
+  }
+  .tabs-more-menu.open{display:block;animation:fadeIn .14s ease;}
+  .tabs-more-menu button{
+    display:block;width:100%;background:none;border:none;color:var(--muted);
+    padding:9px 12px;border-radius:7px;font-family:inherit;font-size:13.5px;
+    font-weight:600;cursor:pointer;text-align:right;white-space:nowrap;
+    transition:background .12s ease, color .12s ease;
+  }
+  .tabs-more-menu button:hover{background:rgba(255,255,255,.06);color:var(--text);}
+  .tabs-more-menu button.active-menu-item{color:var(--gold);}
+
+  main{padding:16px 20px 40px;max-width:1000px;margin:0 auto;}
+  .tabpanel{display:none;}
+  .tabpanel.active{display:block;animation:fadeIn .18s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+  @media (prefers-reduced-motion: reduce){.tabpanel.active{animation:none;}}
+
+  .card{
+    background:var(--panel-alt);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px;margin-bottom:14px;box-shadow:0 6px 16px rgba(0,0,0,.18);
+  }
+  .card h2{margin:0 0 12px;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;}
+  .card h2 .icon{color:var(--gold);font-size:15px;}
+  .hint{color:var(--muted);font-size:12.5px;line-height:1.9;margin:0 0 12px;}
+
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px;}
+  input[type=text],input[type=number],input[type=password],select,textarea{
+    width:100%;background:#10151b;border:1px solid var(--border);border-radius:8px;
+    color:var(--text);padding:10px 11px;font-family:inherit;font-size:14px;
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--gold);outline-offset:1px;}
+  a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+    outline:2px solid var(--gold);outline-offset:2px;
+  }
+  textarea{resize:vertical;min-height:60px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+  @media(max-width:560px){.row2,.row3{grid-template-columns:1fr;}}
+  .hint-line{font-size:12px;color:var(--muted);margin-top:-4px;margin-bottom:10px;}
+  .hint-line b{color:var(--gold);font-weight:700;}
+
+  .date-field{display:flex;gap:6px;align-items:stretch;}
+  input.date-input{cursor:pointer;background:#10151b url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b96a3' stroke-width='2'%3E%3Crect x='3' y='5' width='18' height='16' rx='2'/%3E%3Cpath d='M3 10h18M8 3v4M16 3v4'/%3E%3C/svg%3E") left 10px center no-repeat;padding-left:34px;}
+  .date-clear{
+    flex-shrink:0;background:#10151b;border:1px solid var(--border);color:var(--muted);
+    border-radius:8px;width:38px;font-size:13px;cursor:pointer;
+  }
+  .date-clear:hover{color:var(--text);}
+
+  .dp-popup{
+    display:none;position:absolute;z-index:999;width:266px;background:var(--panel-alt);
+    border:1px solid var(--border);border-radius:10px;padding:10px;
+    box-shadow:0 12px 28px rgba(0,0,0,.45);
+  }
+  .dp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .dp-title{font-size:13.5px;font-weight:700;}
+  .dp-nav{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;width:26px;height:26px;border-radius:6px;}
+  .dp-nav:hover{color:var(--text);background:rgba(255,255,255,.06);}
+  .dp-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11px;color:var(--muted);margin-bottom:4px;}
+  .dp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+  .dp-day{
+    background:none;border:none;color:var(--text);font-size:12.5px;cursor:pointer;
+    height:32px;border-radius:6px;font-family:'JetBrains Mono',monospace;
+  }
+  .dp-day:hover{background:rgba(255,255,255,.06);}
+
+  /* ---- Custom Confirm Modal ---- */
+  .confirm-overlay{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;
+    align-items:center;justify-content:center;padding:20px;
+  }
+  .confirm-overlay.open{display:flex;}
+  .confirm-box{
+    background:var(--panel-alt);border:1px solid var(--border);border-radius:12px;
+    padding:22px;max-width:340px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.5);
+    animation:fadeIn .14s ease;
+  }
+  .confirm-box p{margin:0 0 18px;font-size:14px;line-height:1.7;color:var(--text);}
+  .confirm-actions{display:flex;gap:8px;justify-content:flex-end;}
+
+  /* ---- Auth Overlay ---- */
+  .auth-overlay{
+    display:none;position:fixed;inset:0;background:var(--bg);z-index:3000;
+    align-items:center;justify-content:center;padding:20px;
+  }
+  .auth-overlay.open{display:flex;}
+  .auth-box{
+    background:var(--panel-alt);border:1px solid var(--border);border-radius:12px;
+    padding:26px 22px;max-width:340px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.5);
+  }
+  .auth-box h1{font-size:18px;margin:0 0 4px;font-weight:800;}
+  .auth-box h1 span{color:var(--gold);}
+  .auth-box .hint{margin-bottom:16px;}
+  .auth-box button[type=submit]{
+    width:100%;background:var(--gold);color:#241a06;border:none;border-radius:8px;
+    padding:11px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;
+  }
+  .auth-box button[type=submit]:hover{filter:brightness(1.08);}
+  .auth-box .btn-ghost{
+    width:100%;background:none;border:none;color:var(--muted);font-family:inherit;
+    font-size:12.5px;padding:10px;cursor:pointer;text-align:center;
+  }
+  .auth-box .btn-ghost:hover{color:var(--text);}
+
+  /* ---- Pager ---- */
+  .pager{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;}
+  .pager button{
+    background:var(--panel);border:1px solid var(--border);color:var(--text);
+    padding:6px 14px;border-radius:8px;font-family:inherit;font-size:12.5px;cursor:pointer;
+  }
+  .pager button:hover:not(:disabled){background:var(--panel-alt);}
+  .pager button:disabled{opacity:.4;cursor:default;}
+  .pager-info{font-size:12px;color:var(--muted);}
+  .dp-day.dp-today{box-shadow:inset 0 0 0 1px var(--gold);}
+  .dp-day.dp-selected{background:var(--gold);color:#241a06;font-weight:700;}
+  .dp-empty{visibility:hidden;}
+  .dp-footer{display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
+
+  .form-actions{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;}
+  .btn{
+    border:none;border-radius:8px;padding:10px 18px;font-family:inherit;font-weight:700;
+    font-size:14px;cursor:pointer;transition:transform .08s ease, filter .15s ease;
+  }
+  .btn:hover{filter:brightness(1.08);}
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--gold);color:#241a06;}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+  .btn-ghost:hover{color:var(--text);border-color:var(--muted);}
+  .btn-danger{background:transparent;color:var(--red);border:1px solid var(--red);}
+  .btn-small{padding:6px 10px;font-size:12px;border-radius:6px;}
+  .file-btn{position:relative;overflow:hidden;display:inline-block;}
+  .file-btn input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;}
+
+  .msg{display:none;margin-top:10px;padding:9px 12px;border-radius:8px;font-size:13px;}
+  .msg.show{display:block;}
+  .msg.ok{background:var(--green-dim);color:var(--green);}
+  .msg.err{background:var(--red-dim);color:var(--red);}
+
+  .filters{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px;}
+  @media(max-width:700px){.filters{grid-template-columns:1fr 1fr;}}
+
+  .tablewrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{padding:9px 8px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;}
+  th{color:var(--muted);font-weight:600;font-size:12px;}
+  tbody tr:hover{background:rgba(255,255,255,.02);}
+  .badge{background:var(--gold-dim);color:#f0c876;padding:3px 8px;border-radius:6px;font-size:11.5px;}
+  .empty{color:var(--muted);text-align:center;padding:34px 10px;font-size:13.5px;line-height:1.8;}
+  .row-actions{display:flex;gap:2px;}
+  .row-actions button{
+    background:none;border:none;cursor:pointer;color:var(--muted);font-size:15px;
+    width:30px;height:30px;border-radius:6px;transition:background .12s ease,color .12s ease;
+  }
+  .row-actions button:hover{color:var(--text);background:rgba(255,255,255,.06);}
+  .profit-pos{color:var(--green);}
+  .profit-neg{color:var(--red);}
+
+  .kv{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--border);font-size:13.5px;}
+  .kv:last-child{border-bottom:none;}
+  .divider{height:1px;background:var(--border);margin:14px 0;}
+
+  .stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;}
+  .stat-card{background:#10151b;border:1px solid var(--border);border-radius:8px;padding:12px 10px;text-align:center;}
+  .stat-card .n{font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:700;direction:ltr;}
+  .stat-card .l{font-size:11px;color:var(--muted);margin-top:4px;}
+  .stat-card.profit .n{color:var(--green);}
+  .stat-card.loss .n{color:var(--red);}
+
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:13px;}
+  .bar-row .name{width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .bar-track{flex:1;background:#10151b;border-radius:6px;height:10px;overflow:hidden;}
+  .bar-fill{height:100%;background:var(--gold);border-radius:6px;}
+  .bar-val{width:110px;flex-shrink:0;text-align:left;font-family:'JetBrains Mono',monospace;font-size:12px;direction:ltr;}
+
+  .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+  .product-card{background:#10151b;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .product-photo{width:100%;aspect-ratio:1/1;background:#0b0e12;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .product-photo img{width:100%;height:100%;object-fit:cover;}
+  .product-photo .ph-empty{color:var(--muted);font-size:11px;}
+  .product-info{padding:9px 10px;}
+  .product-info .pname{font-size:13.5px;font-weight:700;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .product-info .pcost{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--gold);direction:ltr;}
+  .product-info .pdate{font-size:11px;color:var(--muted);margin-top:2px;}
+  .product-actions{display:flex;gap:4px;padding:0 8px 9px;}
+  .product-actions button{
+    flex:1;background:var(--panel-alt);border:1px solid var(--border);color:var(--muted);
+    border-radius:6px;padding:5px;font-size:12px;cursor:pointer;
+  }
+  .product-actions button:hover{color:var(--text);}
+
+  .photo-upload{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+  .photo-preview{
+    width:72px;height:72px;border-radius:8px;background:#10151b;border:1px solid var(--border);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;
+  }
+  .photo-preview img{width:100%;height:100%;object-fit:cover;}
+  .photo-preview span{color:var(--muted);font-size:10px;text-align:center;}
+
+  .bom-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+  .bom-row select{flex:2;min-width:0;}
+  .bom-row input{flex:1;min-width:0;}
+  .bom-row .bom-cost{flex:1;text-align:left;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--gold);direction:ltr;white-space:nowrap;}
+  .bom-row .bom-remove{flex-shrink:0;background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;width:32px;height:36px;border-radius:6px;}
+  .bom-row .bom-remove:hover{color:var(--red);background:rgba(255,255,255,.06);}
+  @media(max-width:560px){
+    .bom-row{flex-wrap:wrap;}
+    .bom-row select{flex-basis:100%;}
+    .bom-row .bom-cost{order:1;}
+  }
+  .costing-badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:6px;background:var(--gold-dim);color:#f0c876;margin-right:6px;}
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="appbar-row">
+    <h1><span>دفتر</span> کسب‌وکار</h1>
+    <button id="logoutBtn" title="خروج از حساب">خروج</button>
+  </div>
+  <div class="sub">مدیریت مشترک • داده‌ها بلافاصله همگام می‌شوند <span class="sync-badge" id="syncBadge">آنلاین ✓</span></div>
+  <div class="sync-stuck-bar" id="syncStuckBar" style="display:none">
+    <span id="syncStuckText" style="word-break:break-word">یک تغییر همگام‌سازی نشد.</span>
+    <button type="button" class="btn btn-ghost btn-small" id="syncCopyErrBtn">کپی متن خطا</button>
+    <button type="button" class="btn btn-ghost btn-small" id="syncRetryBtn">تلاش مجدد</button>
+    <button type="button" class="btn btn-danger btn-small" id="syncSkipBtn">رد کردن این تغییر</button>
+  </div>
+  <div class="sync-stuck-bar" id="dataCapNotice" style="display:none;background:var(--gold-dim);border-color:var(--gold);">
+    <span id="dataCapNoticeText"></span>
+  </div>
+  <div class="receipt">
+    <div class="receipt-grid">
+      <div class="receipt-cell"><div class="val mono" id="sumSales">0</div><div class="lbl">تعداد فروش</div></div>
+      <div class="receipt-cell"><div class="val mono" id="sumRevenue">0</div><div class="lbl">درآمد کل (تومان)</div></div>
+      <div class="receipt-cell"><div class="val mono" id="sumCost">0</div><div class="lbl">هزینه کل (تومان)</div></div>
+      <div class="receipt-cell" id="sumProfitCell"><div class="val mono" id="sumProfit">0</div><div class="lbl">سود خالص (تومان)</div></div>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button data-tab="expenses" class="active">💸 هزینه‌ها</button>
+  <button data-tab="sales">🧾 فروش</button>
+  <div class="tabs-more-wrap">
+    <button class="tabs-more-btn" id="moreMenuBtn">☰ بیشتر ▾</button>
+    <div class="tabs-more-menu" id="moreMenu">
+      <button data-tab="products" data-menu="true">📦 محصولات</button>
+      <button data-tab="costing" data-menu="true">📋 فهرست بها</button>
+      <button data-tab="analysis" data-menu="true">📊 آنالیز و گزارش</button>
+    </div>
+  </div>
+</nav>
+
+<main>
+
+  <!-- EXPENSES / MATERIALS -->
+  <section class="tabpanel active" id="tab-expenses">
+    <div class="card">
+      <h2><span class="icon">＋</span> ثبت خرید ماده یا هزینه</h2>
+      <p class="hint">آیتم را از «فهرست بها» انتخاب کن؛ قیمت واحد به‌طور پیش‌فرض از فهرست بها می‌آید ولی برای این خرید قابل تغییر است.</p>
+      <form id="matForm">
+        <input type="hidden" id="matId">
+        <div class="field">
+          <label>تاریخ *</label>
+          <div class="date-field"><input type="text" id="matDate" class="date-input mono" readonly placeholder="انتخاب تاریخ" required></div>
+        </div>
+        <div class="field">
+          <label>آیتم (از فهرست بها) *</label>
+          <select id="matItem" required></select>
+        </div>
+        <div class="row3">
+          <div class="field">
+            <label>مقدار *</label>
+            <input type="number" id="matQty" inputmode="numeric" min="0" step="any" placeholder="مثلاً 5" required>
+          </div>
+          <div class="field">
+            <label>واحد</label>
+            <input type="text" id="matUnit" readonly tabindex="-1">
+          </div>
+          <div class="field">
+            <label>قیمت واحد در این خرید (تومان)</label>
+            <input type="number" id="matUnitPrice" inputmode="numeric" min="0" step="100" placeholder="پیش‌فرض: فهرست بها">
+          </div>
+        </div>
+        <p class="hint" style="margin-bottom:10px">قیمت واحد و تاریخ این آیتم در «فهرست بها» به‌طور خودکار با تاریخ این خرید به‌روز می‌شود.</p>
+        <div class="kv" style="font-weight:700"><span>هزینه کل این خرید</span><span class="mono" id="matComputedCost">0 تومان</span></div>
+        <div class="field" style="margin-top:12px">
+          <label>توضیحات (اختیاری)</label>
+          <textarea id="matNote" placeholder="جزئیات بیشتر..."></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="matSubmitBtn">ثبت هزینه</button>
+          <button type="button" class="btn btn-ghost" id="matCancelBtn" style="display:none">انصراف از ویرایش</button>
+        </div>
+        <div class="msg" id="matMsg"></div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">≡</span> فهرست هزینه‌های ثبت‌شده</h2>
+      <div class="filters" style="grid-template-columns:1fr 1fr 1fr;">
+        <div class="field" style="margin-bottom:0"><label>از تاریخ</label><div class="date-field"><input type="text" id="matFFrom" class="date-input mono" readonly placeholder="همه"><button type="button" class="date-clear" data-clear="matFFrom">×</button></div></div>
+        <div class="field" style="margin-bottom:0"><label>تا تاریخ</label><div class="date-field"><input type="text" id="matFTo" class="date-input mono" readonly placeholder="همه"><button type="button" class="date-clear" data-clear="matFTo">×</button></div></div>
+        <div class="field" style="margin-bottom:0"><label>جستجو در عنوان</label><input type="text" id="matFSearch" placeholder="مثلاً: پارچه"></div>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>تاریخ</th><th>عنوان</th><th>مقدار</th><th>هزینه (تومان)</th><th></th></tr></thead>
+          <tbody id="matBody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="matEmpty" style="display:none">هنوز هزینه‌ای ثبت نشده.</div>
+      <div class="pager" id="matPager"></div>
+      <div class="kv" style="margin-top:10px;font-weight:700"><span>جمع فیلتر شده</span><span class="mono" id="matFilteredSum">0 تومان</span></div>
+    </div>
+  </section>
+
+  <!-- PRODUCTS -->
+  <section class="tabpanel" id="tab-products">
+    <div class="card">
+      <h2 id="prodFormTitle"><span class="icon">＋</span> ثبت محصول جدید</h2>
+      <p class="hint">قیمتی که محصول را با آن می‌فروشید اینجا ثبت کن؛ موادبری و هزینهٔ تمام‌شده (اختیاری) هم پایین همین فرم قابل ثبت است.</p>
+      <form id="prodForm">
+        <input type="hidden" id="prodId">
+        <div class="photo-upload">
+          <div class="photo-preview" id="prodPhotoPreview"><span>بدون عکس</span></div>
+          <div>
+            <label class="btn btn-ghost file-btn btn-small">
+              انتخاب عکس
+              <input type="file" accept="image/*" id="prodPhotoInput">
+            </label>
+            <button type="button" class="btn btn-ghost btn-small" id="prodPhotoRemove" style="display:none">حذف عکس</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>نام محصول *</label>
+          <input type="text" id="prodName" placeholder="مثلاً: کیف چرمی دست‌دوز" required>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>قیمت فروش (تومان) *</label>
+            <input type="number" id="prodSellPrice" inputmode="numeric" min="0" step="1000" placeholder="مثلاً 320000" required>
+          </div>
+          <div class="field">
+            <label>تاریخ ثبت قیمت *</label>
+            <div class="date-field"><input type="text" id="prodDate" class="date-input mono" readonly placeholder="انتخاب تاریخ" required></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>توضیحات (اختیاری)</label>
+          <textarea id="prodNote" placeholder="جزئیات محصول..."></textarea>
+        </div>
+
+        <div class="divider"></div>
+        <h2 style="margin-bottom:6px"><span class="icon">▤</span> موادبری محصول (اختیاری)</h2>
+        <p class="hint">آیتم‌های فهرست بها را با مقدار مصرفی برای این محصول اضافه کن تا هزینهٔ تمام‌شده خودکار محاسبه شود. <span class="costing-badge">در سود و زیان لحاظ نمی‌شود</span></p>
+        <div id="prodBomRows"></div>
+        <div class="form-actions" style="margin-top:6px;margin-bottom:12px">
+          <button type="button" class="btn btn-ghost btn-small" id="prodBomAddRow">＋ افزودن آیتم</button>
+        </div>
+        <div class="kv" style="font-weight:700;margin-bottom:14px"><span>هزینه تمام‌شده محاسبه‌شده</span><span class="mono" id="prodBomTotal">0 تومان</span></div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="prodSubmitBtn">ثبت محصول</button>
+          <button type="button" class="btn btn-ghost" id="prodCancelBtn" style="display:none">انصراف از ویرایش</button>
+        </div>
+        <div class="msg" id="prodMsg"></div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">▤</span> فهرست محصولات</h2>
+      <div class="product-grid" id="productGrid"></div>
+      <div class="empty" id="prodEmpty" style="display:none">هنوز محصولی ثبت نشده.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">▥</span> تحلیل هزینه تمام‌شده محصولات</h2>
+      <p class="hint">جدول زیر فقط برای تحلیل است <span class="costing-badge">در سود و زیان لحاظ نمی‌شود</span></p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>محصول</th><th>هزینه تمام‌شده</th><th>قیمت فروش</th><th>حاشیه سود</th><th>درصد حاشیه</th></tr></thead>
+          <tbody id="costAnalysisBody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="costAnalysisEmpty" style="display:none">هنوز محصولی ثبت نشده.</div>
+    </div>
+  </section>
+
+  <!-- COSTING: UNITS + PRICE LIST -->
+  <section class="tabpanel" id="tab-costing">
+    <div class="card">
+      <h2><span class="icon">＋</span> مدیریت واحدها</h2>
+      <p class="hint">واحدهایی که در فهرست بها استفاده می‌شوند را اینجا مدیریت کن.</p>
+      <form id="unitForm" class="row2" style="align-items:end">
+        <div class="field" style="margin-bottom:0">
+          <label>نام واحد جدید</label>
+          <input type="text" id="unitName" placeholder="مثلاً: سانتی‌متر مربع">
+        </div>
+        <div class="form-actions" style="margin-bottom:0">
+          <button type="submit" class="btn btn-primary">افزودن واحد</button>
+        </div>
+      </form>
+      <div class="msg" id="unitMsg"></div>
+      <div class="divider"></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>نام واحد</th><th></th></tr></thead>
+          <tbody id="unitBody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="unitEmpty" style="display:none">هنوز واحدی ثبت نشده.</div>
+    </div>
+
+    <div class="card">
+      <h2 id="priceItemFormTitle"><span class="icon">＋</span> افزودن آیتم به فهرست بها</h2>
+      <p class="hint">فهرست بها مبنای تمام محاسبات اپ است (موادبری محصولات، هزینه‌های خرید). <b>این هزینه‌ها در «آنالیز و گزارش» و محاسبهٔ سود خالص شمارش نمی‌شوند</b> — فقط جنبهٔ تحلیلی دارند.</p>
+      <form id="priceItemForm">
+        <input type="hidden" id="priceItemId">
+        <div class="row3">
+          <div class="field">
+            <label>نام آیتم *</label>
+            <input type="text" id="priceItemName" placeholder="مثلاً: چوب، پلکسی، دستمزد طراحی" required>
+          </div>
+          <div class="field">
+            <label>واحد *</label>
+            <select id="priceItemUnit" required></select>
+          </div>
+          <div class="field">
+            <label>قیمت واحد (تومان) *</label>
+            <input type="number" id="priceItemUnitPrice" inputmode="numeric" min="0" step="100" placeholder="مثلاً 5000" required>
+          </div>
+        </div>
+        <div class="field">
+          <label>تاریخ این قیمت *</label>
+          <div class="date-field"><input type="text" id="priceItemDate" class="date-input mono" readonly placeholder="انتخاب تاریخ" required></div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="priceItemSubmitBtn">ثبت آیتم</button>
+          <button type="button" class="btn btn-ghost" id="priceItemCancelBtn" style="display:none">انصراف از ویرایش</button>
+        </div>
+        <div class="msg" id="priceItemMsg"></div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">≡</span> فهرست بها</h2>
+      <p class="hint">هروقت در «هزینه‌ها» خرید جدیدی از یک آیتم ثبت شود، قیمت واحد و تاریخ آن اینجا خودکار به‌روز می‌شود.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>نام آیتم</th><th>واحد</th><th>قیمت واحد (تومان)</th><th>تاریخ به‌روزرسانی</th><th></th></tr></thead>
+          <tbody id="priceItemBody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="priceItemEmpty" style="display:none">هنوز آیتمی به فهرست بها اضافه نشده.</div>
+    </div>
+  </section>
+
+  <!-- SALES -->
+  <section class="tabpanel" id="tab-sales">
+    <div class="card">
+      <h2 id="saleFormTitle"><span class="icon">＋</span> ثبت فروش جدید</h2>
+      <form id="saleForm">
+        <input type="hidden" id="saleId">
+        <div class="field">
+          <label>محصول *</label>
+          <select id="saleProduct" required></select>
+        </div>
+        <div class="row3">
+          <div class="field">
+            <label>تعداد *</label>
+            <input type="number" id="saleQty" inputmode="numeric" min="1" step="1" value="1" placeholder="مثلاً 2" required>
+          </div>
+          <div class="field">
+            <label>قیمت فروش هر واحد (تومان) *</label>
+            <input type="number" id="saleUnitPrice" inputmode="numeric" min="0" step="1000" placeholder="مثلاً 320000" required>
+          </div>
+          <div class="field">
+            <label>تاریخ *</label>
+            <div class="date-field"><input type="text" id="saleDate" class="date-input mono" readonly placeholder="انتخاب تاریخ" required></div>
+          </div>
+        </div>
+        <div class="hint-line">قیمت واحد به‌طور خودکار از قیمت فروش محصول پر می‌شود؛ در صورت نیاز آن را تغییر دهید.</div>
+        <div class="field">
+          <label>توضیحات (اختیاری)</label>
+          <textarea id="saleNote" placeholder="مثلاً: نام مشتری یا کانال فروش"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="saleSubmitBtn">ثبت فروش</button>
+          <button type="button" class="btn btn-ghost" id="saleCancelBtn" style="display:none">انصراف از ویرایش</button>
+        </div>
+        <div class="msg" id="saleMsg"></div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">≡</span> فهرست فروش‌ها</h2>
+      <div class="filters">
+        <div class="field" style="margin-bottom:0"><label>محصول</label><select id="saleFProduct"><option value="">همه</option></select></div>
+        <div class="field" style="margin-bottom:0"><label>از تاریخ</label><div class="date-field"><input type="text" id="saleFFrom" class="date-input mono" readonly placeholder="همه"><button type="button" class="date-clear" data-clear="saleFFrom">×</button></div></div>
+        <div class="field" style="margin-bottom:0"><label>تا تاریخ</label><div class="date-field"><input type="text" id="saleFTo" class="date-input mono" readonly placeholder="همه"><button type="button" class="date-clear" data-clear="saleFTo">×</button></div></div>
+        <div class="field" style="margin-bottom:0"><label>جستجو در توضیحات</label><input type="text" id="saleFSearch" placeholder="مثلاً: اینستاگرام"></div>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>تاریخ</th><th>محصول</th><th>تعداد</th><th>قیمت واحد</th><th>جمع فروش</th><th></th></tr></thead>
+          <tbody id="saleBody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="saleEmpty" style="display:none">هنوز فروشی ثبت نشده.</div>
+      <div class="pager" id="salePager"></div>
+    </div>
+  </section>
+
+  <!-- ANALYSIS -->
+  <section class="tabpanel" id="tab-analysis">
+    <div class="card">
+      <h2><span class="icon">⌕</span> فیلتر بازه زمانی</h2>
+      <div class="filters" style="grid-template-columns:1fr 1fr;">
+        <div class="field" style="margin-bottom:0"><label>از تاریخ</label><div class="date-field"><input type="text" id="anFrom" class="date-input mono" readonly placeholder="از ابتدا"><button type="button" class="date-clear" data-clear="anFrom">×</button></div></div>
+        <div class="field" style="margin-bottom:0"><label>تا تاریخ</label><div class="date-field"><input type="text" id="anTo" class="date-input mono" readonly placeholder="تا امروز"><button type="button" class="date-clear" data-clear="anTo">×</button></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">▤</span> خلاصه سود و زیان</h2>
+      <div class="stat-cards">
+        <div class="stat-card"><div class="n mono" id="anRevenue">0</div><div class="l">درآمد فروش</div></div>
+        <div class="stat-card"><div class="n mono" id="anMaterials">0</div><div class="l">جمع هزینه‌ها</div></div>
+        <div class="stat-card" id="anNetCard"><div class="n mono" id="anNet">0</div><div class="l">سود خالص</div></div>
+        <div class="stat-card"><div class="n mono" id="anMargin">—</div><div class="l">حاشیه سود خالص</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">▥</span> فروش به تفکیک محصول</h2>
+      <div id="anByProduct"></div>
+      <div class="empty" id="anByProductEmpty" style="display:none">داده‌ای برای نمایش وجود ندارد.</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">▥</span> روند سود ماهانه</h2>
+      <div id="anByMonth"></div>
+      <div class="empty" id="anByMonthEmpty" style="display:none">داده‌ای برای نمایش وجود ندارد.</div>
+    </div>
+  </section>
+
+</main>
+
+<div class="dp-popup" id="dpPopup">
+  <div class="dp-header">
+    <button type="button" class="dp-nav" id="dpPrevYear">«</button>
+    <button type="button" class="dp-nav" id="dpPrevMonth">‹</button>
+    <div class="dp-title" id="dpTitle"></div>
+    <button type="button" class="dp-nav" id="dpNextMonth">›</button>
+    <button type="button" class="dp-nav" id="dpNextYear">»</button>
+  </div>
+  <div class="dp-weekdays"><span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span>ج</span></div>
+  <div class="dp-grid" id="dpGrid"></div>
+  <div class="dp-footer">
+    <button type="button" class="btn btn-ghost btn-small" id="dpToday">امروز</button>
+    <button type="button" class="btn btn-ghost btn-small" id="dpClose">بستن</button>
+  </div>
+</div>
+
+<!-- AUTH OVERLAY -->
+<div class="auth-overlay open" id="authOverlay">
+  <div class="auth-box">
+    <h1><span>دفتر</span> کسب‌وکار</h1>
+    <p class="hint" id="authSubtitle">برای ورود، ایمیل و رمز عبور را وارد کنید.</p>
+    <form id="authForm">
+      <div class="field">
+        <label>ایمیل</label>
+        <input type="text" id="authEmail" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label>رمز عبور</label>
+        <input type="password" id="authPassword" autocomplete="current-password" minlength="8" required>
+      </div>
+      <button type="submit" id="authSubmitBtn">ورود</button>
+      <button type="button" class="btn-ghost" id="authToggleBtn">ثبت‌نام به‌جای ورود</button>
+      <div class="msg" id="authMsg"></div>
+    </form>
+  </div>
+</div>
+
+<!-- CUSTOM CONFIRM MODAL -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="confirmMsg">
+    <p id="confirmMsg"></p>
+    <div class="confirm-actions">
+      <button type="button" class="btn btn-ghost" id="confirmCancelBtn">انصراف</button>
+      <button type="button" class="btn btn-danger" id="confirmOkBtn">حذف کن</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   SUPABASE SETUP
+   ========================================================= */
+const SUPABASE_URL = 'https://tqjnedvjsovxksdtbdsc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_8h1k_5tJNEX0MQA4E2ds5w__3ARv2TO';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* اپ فقط برای یک کسب‌وکار (خانواده) استفاده میشه؛ همه چیز زیر همین شناسه‌ی ثابت ذخیره میشه
+   (همون ردیفی که تو schema.sql ساختیم) */
+const BUSINESS_ID = '00000000-0000-0000-0000-000000000001';
+
+/* =========================================================
+   UUID GENERATOR — همه idهای جدید باید UUID واقعی باشن
+   چون ستون id تو Postgres از نوع uuid تعریف شده
+   ========================================================= */
+function uid(){
+  if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
+    const r=Math.random()*16|0, v=c==='x'?r:(r&0x3|0x8);
+    return v.toString(16);
+  });
+}
+
+/* =========================================================
+   LOCAL SNAPSHOT + OPERATION QUEUE (در localStorage پایدارن)
+   ========================================================= */
+const LS_SNAPSHOT_KEY = 'bizledger_snapshot_v2';
+const LS_QUEUE_KEY    = 'bizledger_queue_v2';
+const OP_TIMEOUT_MS   = 12000;
+const MAX_RETRY       = 6;
+
+function emptyData(){
+  return {materials:[], products:[], sales:[], priceItems:[], units:[]};
+}
+let cachedData = emptyData();
+const DEFAULT_UNITS=['عدد','سانتی‌متر مربع','متر','سانتی‌متر','کیلوگرم','گرم','لیتر','دقیقه','ساعت'];
+
+function saveSnapshotToLS(){
+  try{ localStorage.setItem(LS_SNAPSHOT_KEY, JSON.stringify(cachedData)); }
+  catch(e){ console.warn('localStorage full?', e); }
+}
+function loadSnapshotFromLS(){
+  try{ const raw=localStorage.getItem(LS_SNAPSHOT_KEY); return raw?JSON.parse(raw):null; }
+  catch(e){ return null; }
+}
+
+function loadQueueFromLS(){
+  try{ const raw=localStorage.getItem(LS_QUEUE_KEY); return raw?JSON.parse(raw):[]; }
+  catch(e){ return []; }
+}
+function saveQueueToLS(){
+  try{ localStorage.setItem(LS_QUEUE_KEY, JSON.stringify(opQueue)); }
+  catch(e){}
+}
+
+let opQueue = loadQueueFromLS();   // صف عملیات منتظر ارسال — هر آیتم یک insert/update/delete مستقل
+let isSyncing = false;
+let isConnected = false;
+let syncRetryCount = 0;
+let flushTimer = null;
+
+function isDirty(){ return opQueue.length > 0; }
+
+/* =========================================================
+   ROW  ⇄  JS-OBJECT  MAPPING
+   دیتابیس snake_case داره، کد اپ camelCase — این توابع تبدیل میکنن
+   ========================================================= */
+function unitIdByName(name){
+  const u=(cachedData.units||[]).find(x=>x.name===name);
+  return u ? u.id : null;
+}
+function unitNameById(id){
+  const u=(cachedData.units||[]).find(x=>x.id===id);
+  return u ? u.name : '';
+}
+
+function materialToRow(o){
+  return {id:o.id, business_id:BUSINESS_ID, item_id:o.itemId||null, item_name:o.itemName,
+    unit:o.unit||null, date:o.date, qty:o.qty, unit_price_used:o.unitPriceUsed, cost:o.cost, note:o.note||null};
+}
+function productToRow(o){
+  return {id:o.id, business_id:BUSINESS_ID, name:o.name, sell_price:o.sellPrice,
+    price_date:o.priceDate, note:o.note||null, photo_url:o.photo||null};
+}
+function saleToRow(o){
+  return {id:o.id, business_id:BUSINESS_ID, product_id:o.productId||null, product_name:o.productName,
+    qty:o.qty, unit_price:o.unitPrice, date:o.date, note:o.note||null};
+}
+function priceItemToRow(o){
+  return {id:o.id, business_id:BUSINESS_ID, name:o.name, unit_id:unitIdByName(o.unit),
+    unit_price:o.unitPrice, price_date:o.priceDate};
+}
+function unitToRow(o){
+  return {id:o.id, business_id:BUSINESS_ID, name:o.name};
+}
+function rowWithoutId(row){ const {id, ...rest}=row; return rest; }
+
+/* =========================================================
+   SUPABASE CRUD با timeout محافظ
+   ========================================================= */
+function withTimeout(promise){
+  return Promise.race([
+    promise,
+    new Promise((_,reject)=>setTimeout(()=>reject(new Error('sync timeout')), OP_TIMEOUT_MS))
+  ]);
+}
+/* از upsert استفاده میکنیم به‌جای insert تا اگر insert اول timeout خورد ولی
+   واقعاً روی سرور ذخیره شده بود، تلاش دوم رکورد تکراری نسازد و خطای
+   duplicate key ندهد. با onConflict:'id' اپراتور idempotent می‌شود. */
+async function dbInsert(table, row){
+  const {error} = await withTimeout(
+    supabase.from(table).upsert([row], {onConflict:'id', ignoreDuplicates:false})
+  );
+  if(error) throw error;
+}
+async function dbUpdate(table, id, patch){
+  const {error} = await withTimeout(supabase.from(table).update(patch).eq('id', id));
+  if(error) throw error;
+}
+async function dbDelete(table, id){
+  const {error} = await withTimeout(supabase.from(table).delete().eq('id', id));
+  if(error) throw error;
+}
+async function dbUpsertBom(payload){
+  const {error} = await withTimeout(
+    supabase.from('product_bom').upsert([payload], {onConflict:'product_id,item_id'})
+  );
+  if(error) throw error;
+}
+async function dbDeleteBom(productId, itemId){
+  const {error} = await withTimeout(
+    supabase.from('product_bom').delete().eq('product_id', productId).eq('item_id', itemId)
+  );
+  if(error) throw error;
+}
+
+/* =========================================================
+   OPERATION QUEUE — هر تغییر یک عملیات مستقل و قابل retry
+   ========================================================= */
+function enqueueOp(op){
+  opQueue.push(op);
+  saveQueueToLS();
+  scheduleFlush();
+  updateSyncBadge();
+}
+function scheduleFlush(){
+  clearTimeout(flushTimer);
+  flushTimer = setTimeout(flushQueue, 250);
+}
+let queueStuck = false;
+
+/* pendingRefetch: اگر در لحظه‌ای که خودمان در حال ارسال بودیم، رویداد realtime
+   از دستگاه دیگر برسد، آن را دور نمی‌اندازیم؛ فقط علامت می‌زنیم که بعد از
+   خالی شدن صف، یک refetch کامل از سرور بگیریم. این جلوی گم شدن تغییرات
+   همسر/شریک را می‌گیرد. */
+let pendingRefetch = false;
+
+let lastSyncError = null;
+async function flushQueue(){
+  if(isSyncing) return;
+  if(opQueue.length===0){
+    queueStuck=false;
+    updateSyncBadge();
+    if(pendingRefetch){
+      pendingRefetch = false;
+      refreshFromServer().catch(e => console.warn('refetch failed:', e));
+    }
+    return;
+  }
+  isSyncing = true;
+  updateSyncBadge();
+  const op = opQueue[0];
+  try{
+    if(op.action==='insert')         await dbInsert(op.table, op.payload);
+    else if(op.action==='update')    await dbUpdate(op.table, op.recordId, op.payload);
+    else if(op.action==='delete')    await dbDelete(op.table, op.recordId);
+    else if(op.action==='upsert_bom')await dbUpsertBom(op.payload);
+    else if(op.action==='delete_bom')await dbDeleteBom(op.productId, op.itemId);
+    opQueue.shift();
+    saveQueueToLS();
+    syncRetryCount = 0;
+    queueStuck = false;
+    lastSyncError = null;
+    isSyncing = false;
+    if(opQueue.length>0){
+      flushQueue();
+    } else {
+      updateSyncBadge();
+      if(pendingRefetch){
+        pendingRefetch = false;
+        refreshFromServer().catch(e => console.warn('refetch failed:', e));
+      }
+    }
+  }catch(e){
+    console.error('sync op failed:', op, e);
+    lastSyncError = {
+      message: e.message || String(e),
+      details: e.details || null,
+      hint: e.hint || null,
+      code: e.code || null,
+      table: op.table,
+      action: op.action
+    };
+    isSyncing = false;
+    syncRetryCount++;
+    updateSyncBadge('error');
+    if(syncRetryCount <= MAX_RETRY){
+      const delay = Math.min(1000*Math.pow(2, syncRetryCount), 30000);
+      console.log(`Retry ${syncRetryCount}/${MAX_RETRY} in ${delay}ms`);
+      setTimeout(flushQueue, delay);
+    } else {
+      console.error('Max retries reached — عملیات در صف محلی باقی می‌ماند.');
+      queueStuck = true;
+      updateSyncBadge('lost');
+    }
+  }
+}
+
+/* کاربر دستی «تلاش مجدد» را می‌زند: شمارنده retry صفر می‌شود و فوراً دوباره تلاش می‌شود */
+function retrySyncNow(){
+  syncRetryCount = 0;
+  queueStuck = false;
+  updateSyncBadge();
+  flushQueue();
+}
+/* کاربر تصمیم می‌گیرد از عملیات اول صف (که مدام شکست می‌خورد) صرف‌نظر کند تا
+   بقیه صف مسدود نماند. این عملیات محلی حذف می‌شود؛ اگر یک insert/update بود،
+   آن تغییر مشخص روی سرور اعمال نخواهد شد و کاربر باید در صورت نیاز دوباره
+   دستی وارد کند — این هزینه‌ی آگاهانه‌ایست در برابر مسدود ماندن کل صف. */
+function skipStuckOp(){
+  if(opQueue.length===0) return;
+  const skipped=opQueue.shift();
+  saveQueueToLS();
+  console.warn('عملیات رد شد و از صف حذف شد:', skipped);
+  syncRetryCount = 0;
+  queueStuck = false;
+  lastSyncError = null;
+  updateSyncBadge();
+  if(opQueue.length>0) flushQueue();
+}
+document.getElementById('syncRetryBtn').addEventListener('click', retrySyncNow);
+document.getElementById('syncSkipBtn').addEventListener('click', async ()=>{
+  if(!await showConfirm('این تغییر همگام‌سازی‌نشده برای همیشه نادیده گرفته می‌شود و روی سرور اعمال نخواهد شد. ادامه می‌دهید؟')) return;
+  skipStuckOp();
+});
+
+/* =========================================================
+   DIFF  — آرایه قدیم/جدید رو مقایسه و عملیات لازم رو صف می‌کنه
+   ========================================================= */
+function diffAndQueue(table, oldArr, newArr, toRowFn){
+  const oldMap=new Map((oldArr||[]).map(x=>[x.id,x]));
+  const newMap=new Map((newArr||[]).map(x=>[x.id,x]));
+  oldMap.forEach((v,id)=>{
+    if(!newMap.has(id)) enqueueOp({table, action:'delete', recordId:id});
+  });
+  newMap.forEach((v,id)=>{
+    if(!oldMap.has(id)){
+      enqueueOp({table, action:'insert', payload: toRowFn(v)});
+    } else if(JSON.stringify(oldMap.get(id))!==JSON.stringify(v)){
+      enqueueOp({table, action:'update', recordId:id, payload: rowWithoutId(toRowFn(v))});
+    }
+  });
+}
+function flattenBom(products){
+  const out=[];
+  (products||[]).forEach(p=>{
+    (p.bom||[]).forEach(b=>{ out.push({product_id:p.id, item_id:b.itemId, qty:Number(b.qty)||0}); });
+  });
+  return out;
+}
+function diffBom(oldFlat, newFlat){
+  const key=b=>b.product_id+'|'+b.item_id;
+  const newKeys=new Set(newFlat.map(key));
+  oldFlat.forEach(b=>{ if(!newKeys.has(key(b))) enqueueOp({table:'product_bom', action:'delete_bom', productId:b.product_id, itemId:b.item_id}); });
+  newFlat.forEach(b=>{
+    const old=oldFlat.find(o=>key(o)===key(b));
+    if(!old || old.qty!==b.qty) enqueueOp({table:'product_bom', action:'upsert_bom', payload:b});
+  });
+}
+
+/* =========================================================
+   SYNC BADGE
+   ========================================================= */
+function updateSyncBadge(status){
+  const badge=document.getElementById('syncBadge');
+  if(!badge) return;
+  if(isSyncing){ badge.textContent='درحال ارسال...'; badge.className='sync-badge syncing'; }
+  else if(status==='error'){ badge.textContent='خطا — تلاش مجدد'; badge.className='sync-badge error'; }
+  else if(status==='lost'){ badge.textContent='⚠ ارسال ناموفق — ذخیره محلی'; badge.className='sync-badge error'; }
+  else if(status==='offline'){ badge.textContent='آفلاین — ذخیره محلی'; badge.className='sync-badge error'; }
+  else if(isConnected){
+    badge.textContent = isDirty() ? 'درحال همگام‌سازی...' : 'آنلاین ✓';
+    if(isDirty()) badge.textContent += ' (' + opQueue.length + ')';
+    badge.className = isDirty() ? 'sync-badge syncing' : 'sync-badge';
+  } else { badge.textContent='درحال اتصال...'; badge.className='sync-badge syncing'; }
+
+  const stuckBar=document.getElementById('syncStuckBar');
+  if(stuckBar){
+    if(lastSyncError && opQueue.length>0){
+      const n=opQueue.length;
+      const parts=[`جدول: ${lastSyncError.table} (${lastSyncError.action})`, `پیام: ${lastSyncError.message}`];
+      if(lastSyncError.details) parts.push(`جزئیات: ${lastSyncError.details}`);
+      if(lastSyncError.hint) parts.push(`راهنما: ${lastSyncError.hint}`);
+      if(lastSyncError.code) parts.push(`کد: ${lastSyncError.code}`);
+      document.getElementById('syncStuckText').textContent=
+        (n>1 ? `${n} مورد در صف منتظرند — ` : '') + parts.join(' | ');
+      stuckBar.style.display='flex';
+    } else {
+      stuckBar.style.display='none';
+    }
+  }
+}
+function copySyncError(){
+  if(!lastSyncError) return;
+  const text=JSON.stringify(lastSyncError, null, 2);
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>showMsg('matMsg','متن خطا کپی شد.','ok')).catch(()=>{
+      window.prompt('متن خطا را کپی کن:', text);
+    });
+  } else {
+    window.prompt('متن خطا را کپی کن:', text);
+  }
+}
+document.getElementById('syncCopyErrBtn')?.addEventListener('click', copySyncError);
+function updateDataCapNotice(){
+  const el=document.getElementById('dataCapNotice');
+  if(!el) return;
+  if(dataWasTruncated){
+    document.getElementById('dataCapNoticeText').textContent=
+      `فقط ${FETCH_CAP.toLocaleString('en-US')} رکورد اخیرِ فروش/هزینه بارگذاری شده — برای دیدن کل تاریخچه با پشتیبانی تماس بگیرید.`;
+    el.style.display='flex';
+  } else {
+    el.style.display='none';
+  }
+}
+window.addEventListener('online', ()=>{ isConnected=true; if(isDirty()) flushQueue(); updateSyncBadge(); });
+window.addEventListener('offline', ()=>{ isConnected=false; updateSyncBadge('offline'); });
+window.addEventListener('beforeunload',(e)=>{
+  if(isDirty()){
+    e.preventDefault();
+    e.returnValue='تغییرات هنوز همگام‌سازی نشده‌اند. صبر کنید...';
+  }
+});
+
+/* =========================================================
+   REALTIME LISTENER — با هر رویداد، فقط همون رکورد در حافظه
+   patch میشه (نه refetch کامل ۵ جدول) — سبک‌تر و مقیاس‌پذیرتر
+   ========================================================= */
+function materialFromRow(r){
+  return {id:r.id, date:r.date, itemId:r.item_id, itemName:r.item_name, unit:r.unit,
+    qty:Number(r.qty)||0, unitPriceUsed:Number(r.unit_price_used)||0, cost:Number(r.cost)||0, note:r.note||''};
+}
+function saleFromRow(r){
+  return {id:r.id, productId:r.product_id, productName:r.product_name, qty:Number(r.qty)||0,
+    unitPrice:Number(r.unit_price)||0, date:r.date, note:r.note||''};
+}
+function unitFromRow(r){ return {id:r.id, name:r.name}; }
+function priceItemFromRow(r){
+  return {id:r.id, name:r.name, unit:unitNameById(r.unit_id)||'', unitPrice:Number(r.unit_price)||0, priceDate:r.price_date};
+}
+function productFromRowKeepBom(r, existingBom){
+  return {id:r.id, name:r.name, sellPrice:Number(r.sell_price)||0, priceDate:r.price_date,
+    note:r.note||'', photo:r.photo_url||null, bom:existingBom||[]};
+}
+
+function applyRealtimePatch(table, eventType, newRow, oldRow){
+  if(table==='product_bom'){
+    const pid=(newRow||oldRow).product_id;
+    const prod=(cachedData.products||[]).find(p=>p.id===pid);
+    if(!prod) return; /* محصول مربوطه هنوز لود نشده — با init بعدی درست میشه */
+    if(eventType==='DELETE'){
+      prod.bom=(prod.bom||[]).filter(b=>b.itemId!==oldRow.item_id);
+    } else {
+      const idx=(prod.bom||[]).findIndex(b=>b.itemId===newRow.item_id);
+      const entry={itemId:newRow.item_id, qty:Number(newRow.qty)||0};
+      if(idx>-1) prod.bom[idx]=entry; else (prod.bom=prod.bom||[]).push(entry);
+    }
+    saveSnapshotToLS();
+    renderProducts(); renderBomEditor(); renderCostAnalysis();
+    return;
+  }
+
+  const arrKey={materials:'materials', products:'products', sales:'sales',
+    price_items:'priceItems', units:'units'}[table];
+  if(!arrKey) return;
+  const arr=cachedData[arrKey]=cachedData[arrKey]||[];
+
+  if(eventType==='DELETE'){
+    cachedData[arrKey]=arr.filter(x=>x.id!==oldRow.id);
+  } else {
+    let obj;
+    if(table==='materials') obj=materialFromRow(newRow);
+    else if(table==='sales') obj=saleFromRow(newRow);
+    else if(table==='units') obj=unitFromRow(newRow);
+    else if(table==='price_items') obj=priceItemFromRow(newRow);
+    else if(table==='products'){
+      const existing=arr.find(p=>p.id===newRow.id);
+      obj=productFromRowKeepBom(newRow, existing?existing.bom:[]);
+    }
+    const idx=arr.findIndex(x=>x.id===obj.id);
+    if(idx>-1) arr[idx]=obj; else arr.push(obj);
+  }
+  saveSnapshotToLS();
+  if(typeof refreshAll==='function') refreshAll();
+}
+
+function setupRealtimeListener(){
+  const tables=['materials','products','sales','price_items','units','product_bom'];
+  const channel=supabase.channel('biz_data_changes_v3');
+  tables.forEach(t=>{
+    channel.on('postgres_changes',{event:'*',schema:'public',table:t},(payload)=>{
+      /* اگر خودمان در حال ارسال تغییراتیم یا صف پر است، به‌جای دور انداختن
+         رویداد، علامت می‌زنیم که بعد از خالی شدن صف یک refetch کامل بگیریم.
+         این تضمین می‌کند تغییرات همسر/شریک در حین sync ما گم نشود. */
+      if(isSyncing || opQueue.length>0){
+        pendingRefetch = true;
+        return;
+      }
+      const row=(payload.new && Object.keys(payload.new).length) ? payload.new : payload.old;
+      if(row && row.business_id && row.business_id!==BUSINESS_ID) return;
+      applyRealtimePatch(t, payload.eventType, payload.new, payload.old);
+    });
+  });
+  channel.subscribe((status)=>{ isConnected=(status==='SUBSCRIBED'); updateSyncBadge(); });
+}
+
+/* =========================================================
+   LOAD ALL — همه جدول‌ها موازی fetch میشن (فقط هنگام init)
+   ========================================================= */
+const FETCH_CAP = 3000;
+let dataWasTruncated = false;
+
+async function loadAllFromSupabase(){
+  const [matRes, prodRes, salRes, itemRes, unitRes] = await Promise.all([
+    supabase.from('materials').select('*',{count:'exact'}).eq('business_id',BUSINESS_ID)
+      .order('date',{ascending:false}).limit(FETCH_CAP),
+    supabase.from('products').select('*').eq('business_id',BUSINESS_ID).limit(FETCH_CAP),
+    supabase.from('sales').select('*',{count:'exact'}).eq('business_id',BUSINESS_ID)
+      .order('date',{ascending:false}).limit(FETCH_CAP),
+    supabase.from('price_items').select('*').eq('business_id',BUSINESS_ID).limit(FETCH_CAP),
+    supabase.from('units').select('*').eq('business_id',BUSINESS_ID).limit(FETCH_CAP),
+  ]);
+  [matRes,prodRes,salRes,itemRes,unitRes].forEach(r=>{ if(r.error) throw r.error; });
+
+  dataWasTruncated =
+    (typeof matRes.count==='number' && matRes.count>FETCH_CAP) ||
+    (typeof salRes.count==='number' && salRes.count>FETCH_CAP);
+  updateDataCapNotice();
+
+  const unitsArr=(unitRes.data||[]).map(u=>({id:u.id, name:u.name}));
+  const unitNameMap={}; unitsArr.forEach(u=>unitNameMap[u.id]=u.name);
+
+  const priceItemsArr=(itemRes.data||[]).map(r=>({
+    id:r.id, name:r.name, unit:unitNameMap[r.unit_id]||'', unitPrice:Number(r.unit_price)||0, priceDate:r.price_date
+  }));
+
+  const productIds=(prodRes.data||[]).map(p=>p.id);
+  let bomRows=[];
+  if(productIds.length){
+    const bomRes=await supabase.from('product_bom').select('*').in('product_id', productIds);
+    if(bomRes.error) throw bomRes.error;
+    bomRows=bomRes.data||[];
+  }
+  const productsArr=(prodRes.data||[]).map(p=>({
+    id:p.id, name:p.name, sellPrice:Number(p.sell_price)||0, priceDate:p.price_date,
+    note:p.note||'', photo:p.photo_url||null,
+    bom: bomRows.filter(b=>b.product_id===p.id).map(b=>({itemId:b.item_id, qty:Number(b.qty)||0}))
+  }));
+
+  const materialsArr=(matRes.data||[]).map(r=>({
+    id:r.id, date:r.date, itemId:r.item_id, itemName:r.item_name, unit:r.unit,
+    qty:Number(r.qty)||0, unitPriceUsed:Number(r.unit_price_used)||0, cost:Number(r.cost)||0, note:r.note||''
+  }));
+
+  const salesArr=(salRes.data||[]).map(r=>({
+    id:r.id, productId:r.product_id, productName:r.product_name, qty:Number(r.qty)||0,
+    unitPrice:Number(r.unit_price)||0, date:r.date, note:r.note||''
+  }));
+
+  return {materials:materialsArr, products:productsArr, sales:salesArr, priceItems:priceItemsArr, units:unitsArr};
+}
+
+/* refetch سبک: فقط وقتی صدا زده می‌شود که pendingRefetch ست شده باشد.
+   از همان loadAllFromSupabase استفاده می‌کند و سپس UI را refresh می‌کند. */
+async function refreshFromServer(){
+  try{
+    cachedData = await loadAllFromSupabase();
+    saveSnapshotToLS();
+    refreshAll();
+  }catch(e){
+    console.warn('refreshFromServer failed:', e);
+  }
+}
+
+/* =========================================================
+   STORAGE INTERFACE — بقیه کد اپ همچنان همین توابع رو صدا میزنه
+   ========================================================= */
+function loadMaterials(){ return cachedData.materials || []; }
+function saveMaterials(v){
+  diffAndQueue('materials', cachedData.materials, v, materialToRow);
+  cachedData.materials=v; saveSnapshotToLS();
+}
+function loadProducts(){ return (cachedData.products||[]).map(p=>({...p, bom:p.bom||[]})); }
+function saveProducts(v){
+  const old=cachedData.products||[];
+  diffAndQueue('products', old, v, productToRow);
+  diffBom(flattenBom(old), flattenBom(v));
+  cachedData.products=v; saveSnapshotToLS();
+}
+function loadSales(){ return cachedData.sales || []; }
+function saveSales(v){
+  diffAndQueue('sales', cachedData.sales, v, saleToRow);
+  cachedData.sales=v; saveSnapshotToLS();
+}
+function loadPriceItems(){ return cachedData.priceItems || []; }
+function savePriceItems(v){
+  diffAndQueue('price_items', cachedData.priceItems, v, priceItemToRow);
+  cachedData.priceItems=v; saveSnapshotToLS();
+}
+function loadUnits(){ return cachedData.units || []; }
+function saveUnits(v){
+  diffAndQueue('units', cachedData.units, v, unitToRow);
+  cachedData.units=v; saveSnapshotToLS();
+}
+function computeProductCost(product, items){
+  const list = items || loadPriceItems();
+  return (product.bom||[]).reduce((s,row)=>{
+    const item=list.find(i=>i.id===row.itemId);
+    return s + (item ? (Number(row.qty)||0)*item.unitPrice : 0);
+  },0);
+}
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; }
+function money(n){ return (Number(n)||0).toLocaleString('en-US'); }
+
+/* ---------- jalali calendar ---------- */
+function div_(a,b){ return Math.floor(a/b); }
+function gregorianToJalali(gy,gm,gd){
+  const g_d_m=[0,31,59,90,120,151,181,212,243,273,304,334];
+  const gy2=(gm>2)?(gy+1):gy;
+  let days=355666+(365*gy)+div_(gy2+3,4)-div_(gy2+99,100)+div_(gy2+399,400)+gd+g_d_m[gm-1];
+  let jy=-1595+(33*div_(days,12053));
+  days%=12053;
+  jy+=4*div_(days,1461);
+  days%=1461;
+  if(days>365){ jy+=div_(days-1,365); days=(days-1)%365; }
+  let jm,jd;
+  if(days<186){ jm=1+div_(days,31); jd=1+(days%31); }
+  else { jm=7+div_(days-186,30); jd=1+((days-186)%30); }
+  return [jy,jm,jd];
+}
+const JMONTHS=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+function pad2(n){ return n<10 ? '0'+n : ''+n; }
+function jalaliParts(iso){
+  try{
+    if(!iso || typeof iso!=='string') throw new Error('empty date');
+    const parts=iso.split('-').map(Number);
+    if(parts.length!==3 || parts.some(n=>Number.isNaN(n))) throw new Error('invalid date format: '+iso);
+    const [gy,gm,gd]=parts;
+    const [jy,jm,jd]=gregorianToJalali(gy,gm,gd);
+    return {jy,jm,jd};
+  }catch(e){
+    console.warn('jalaliParts: تاریخ نامعتبر —', iso, e.message);
+    return {jy:null,jm:null,jd:null,invalid:true};
+  }
+}
+function jalaliLong(iso){
+  if(!iso) return '—';
+  const p=jalaliParts(iso);
+  if(p.invalid) return 'تاریخ نامعتبر';
+  return p.jd+' '+JMONTHS[p.jm-1]+' '+p.jy;
+}
+function jalaliMonthKey(iso){
+  const p=jalaliParts(iso);
+  if(p.invalid) return 'نامعتبر';
+  return p.jy+'-'+pad2(p.jm);
+}
+function jalaliMonthLabel(key){
+  if(!key || key==='نامعتبر') return 'نامشخص';
+  const [jy,jm]=key.split('-').map(Number);
+  if(!jm || jm<1 || jm>12) return 'نامشخص';
+  return JMONTHS[jm-1]+' '+jy;
+}
+function todayISO(){ const d=new Date(); const off=d.getTimezoneOffset(); const local=new Date(d.getTime()-off*60000); return local.toISOString().slice(0,10); }
+
+function jalaliToGregorian(jy,jm,jd){
+  jy += 1595;
+  let days = -355668 + (365 * jy) + Math.floor(jy / 33) * 8 + Math.floor(((jy % 33) + 3) / 4) + jd + (jm < 7 ? (jm - 1) * 31 : ((jm - 7) * 30) + 186);
+  let gy = 400 * Math.floor(days / 146097);
+  days %= 146097;
+  if (days > 36524){ gy += 100 * Math.floor(--days / 36524); days %= 36524; if (days >= 365) days++; }
+  gy += 4 * Math.floor(days / 1461);
+  days %= 1461;
+  if (days > 365){ gy += Math.floor((days - 1) / 365); days = (days - 1) % 365; }
+  let gd = days + 1;
+  const sal_a=[0,31,((gy%4===0 && gy%100!==0)||(gy%400===0))?29:28,31,30,31,30,31,31,30,31,30,31];
+  let gm=0;
+  for(gm=1; gm<=12 && gd>sal_a[gm]; gm++) gd-=sal_a[gm];
+  return [gy,gm,gd];
+}
+function jalaliMonthLength(jy,jm){
+  const g1=jalaliToGregorian(jy,jm,1);
+  const nj = jm<12 ? [jy,jm+1,1] : [jy+1,1,1];
+  const g2=jalaliToGregorian(nj[0],nj[1],nj[2]);
+  const d1=Date.UTC(g1[0],g1[1]-1,g1[2]);
+  const d2=Date.UTC(g2[0],g2[1]-1,g2[2]);
+  return Math.round((d2-d1)/86400000);
+}
+
+/* ---------- single-field jalali date picker ---------- */
+let dpState={el:null,jy:0,jm:0};
+
+function initDateField(inputId, defaultToday){
+  const el=document.getElementById(inputId);
+  el.addEventListener('click',()=>openDatePicker(el));
+  if(defaultToday) setDateFieldValue(el, todayISO());
+}
+function setDateFieldValue(el, iso){
+  el.dataset.iso = iso || '';
+  el.value = iso ? (jalaliParts(iso).jy+'/'+pad2(jalaliParts(iso).jm)+'/'+pad2(jalaliParts(iso).jd)) : '';
+}
+function getDateFieldValue(el){ return (el.dataset.iso)||''; }
+function clearDateField(inputId){
+  const el=document.getElementById(inputId);
+  setDateFieldValue(el,'');
+  el.dispatchEvent(new Event('change'));
+}
+document.querySelectorAll('[data-clear]').forEach(btn=>{
+  btn.addEventListener('click',()=>clearDateField(btn.dataset.clear));
+});
+
+function openDatePicker(el){
+  const iso = el.dataset.iso || todayISO();
+  const p=jalaliParts(iso);
+  dpState={el,jy:p.jy,jm:p.jm};
+  renderDpCalendar();
+  positionDpPopup(el);
+  document.getElementById('dpPopup').style.display='block';
+  setTimeout(()=>{
+    document.addEventListener('mousedown',dpOutsideClick);
+    window.addEventListener('scroll',closeDatePicker,true);
+  },0);
+}
+function positionDpPopup(el){
+  const popup=document.getElementById('dpPopup');
+  const r=el.getBoundingClientRect();
+  const scrollY=window.scrollY, scrollX=window.scrollX;
+  const popupWidth=266;
+  let left=r.left+scrollX;
+  if(left+popupWidth>window.innerWidth-8) left=window.innerWidth-popupWidth-8;
+  if(left<8) left=8;
+  popup.style.top=(r.bottom+scrollY+6)+'px';
+  popup.style.left=left+'px';
+}
+function dpOutsideClick(e){
+  const popup=document.getElementById('dpPopup');
+  if(popup.contains(e.target) || (dpState.el && dpState.el===e.target)) return;
+  closeDatePicker();
+}
+function closeDatePicker(){
+  document.getElementById('dpPopup').style.display='none';
+  document.removeEventListener('mousedown',dpOutsideClick);
+  window.removeEventListener('scroll',closeDatePicker,true);
+  dpState={el:null,jy:0,jm:0};
+}
+function renderDpCalendar(){
+  document.getElementById('dpTitle').textContent=JMONTHS[dpState.jm-1]+' '+dpState.jy;
+  const grid=document.getElementById('dpGrid');
+  grid.innerHTML='';
+  const g1=jalaliToGregorian(dpState.jy,dpState.jm,1);
+  const jsDay=new Date(Date.UTC(g1[0],g1[1]-1,g1[2])).getUTCDay();
+  const offset=(jsDay+1)%7;
+  const len=jalaliMonthLength(dpState.jy,dpState.jm);
+  const todayIso=todayISO();
+  const selIso=dpState.el?(dpState.el.dataset.iso||''):'';
+  for(let i=0;i<offset;i++){ const s=document.createElement('span'); s.className='dp-empty'; grid.appendChild(s); }
+  for(let d=1; d<=len; d++){
+    const g=jalaliToGregorian(dpState.jy,dpState.jm,d);
+    const iso=g[0]+'-'+pad2(g[1])+'-'+pad2(g[2]);
+    const btn=document.createElement('button');
+    btn.type='button'; btn.className='dp-day'; btn.textContent=d;
+    if(iso===todayIso) btn.classList.add('dp-today');
+    if(iso===selIso) btn.classList.add('dp-selected');
+    btn.addEventListener('click',()=>pickDpDay(d));
+    grid.appendChild(btn);
+  }
+}
+function pickDpDay(d){
+  const g=jalaliToGregorian(dpState.jy,dpState.jm,d);
+  const iso=g[0]+'-'+pad2(g[1])+'-'+pad2(g[2]);
+  const el=dpState.el;
+  setDateFieldValue(el,iso);
+  el.dispatchEvent(new Event('change'));
+  closeDatePicker();
+}
+document.getElementById('dpPrevMonth').addEventListener('click',()=>{ dpState.jm--; if(dpState.jm<1){dpState.jm=12; dpState.jy--;} renderDpCalendar(); });
+document.getElementById('dpNextMonth').addEventListener('click',()=>{ dpState.jm++; if(dpState.jm>12){dpState.jm=1; dpState.jy++;} renderDpCalendar(); });
+document.getElementById('dpPrevYear').addEventListener('click',()=>{ dpState.jy--; renderDpCalendar(); });
+document.getElementById('dpNextYear').addEventListener('click',()=>{ dpState.jy++; renderDpCalendar(); });
+document.getElementById('dpToday').addEventListener('click',()=>{ const p=jalaliParts(todayISO()); dpState.jy=p.jy; dpState.jm=p.jm; pickDpDay(p.jd); });
+document.getElementById('dpClose').addEventListener('click',closeDatePicker);
+
+/* ---------- messages ---------- */
+function showMsg(id,text,cls){
+  const el=document.getElementById(id);
+  el.textContent=text;
+  el.className='msg show '+cls;
+  setTimeout(()=>hideMsg(id), cls==='ok' ? 3000 : 6000);
+}
+
+/* ---------- custom confirm modal (جایگزین confirm() بومی) ---------- */
+function showConfirm(message){
+  return new Promise((resolve)=>{
+    const overlay=document.getElementById('confirmOverlay');
+    document.getElementById('confirmMsg').textContent=message;
+    overlay.classList.add('open');
+    const okBtn=document.getElementById('confirmOkBtn');
+    const cancelBtn=document.getElementById('confirmCancelBtn');
+    function cleanup(result){
+      overlay.classList.remove('open');
+      okBtn.removeEventListener('click',onOk);
+      cancelBtn.removeEventListener('click',onCancel);
+      overlay.removeEventListener('click',onOverlay);
+      document.removeEventListener('keydown',onKey);
+      resolve(result);
+    }
+    function onOk(){ cleanup(true); }
+    function onCancel(){ cleanup(false); }
+    function onOverlay(e){ if(e.target===overlay) cleanup(false); }
+    function onKey(e){ if(e.key==='Escape') cleanup(false); }
+    okBtn.addEventListener('click',onOk);
+    cancelBtn.addEventListener('click',onCancel);
+    overlay.addEventListener('click',onOverlay);
+    document.addEventListener('keydown',onKey);
+  });
+}
+
+function hideMsg(id){ const el=document.getElementById(id); el.className='msg'; }
+
+/* ---------- tabs + more-menu ---------- */
+const MENU_TABS = ['products','costing','analysis'];
+
+function closeMoreMenu(){
+  document.getElementById('moreMenu').classList.remove('open');
+  document.getElementById('moreMenuBtn').classList.remove('open');
+  document.removeEventListener('mousedown', moreMenuOutside);
+}
+function moreMenuOutside(e){
+  const wrap = document.getElementById('moreMenu').closest('.tabs-more-wrap');
+  if(!wrap.contains(e.target)) closeMoreMenu();
+}
+document.getElementById('moreMenuBtn').addEventListener('click',(e)=>{
+  e.stopPropagation();
+  const menu = document.getElementById('moreMenu');
+  const isOpen = menu.classList.toggle('open');
+  document.getElementById('moreMenuBtn').classList.toggle('open', isOpen);
+  if(isOpen) setTimeout(()=>document.addEventListener('mousedown', moreMenuOutside),0);
+  else closeMoreMenu();
+});
+
+/* Direct tab buttons (هزینه‌ها + فروش) */
+document.querySelectorAll('nav.tabs > button[data-tab]').forEach(btn=>{
+  btn.addEventListener('click',()=>{ switchTab(btn.dataset.tab); });
+});
+/* Menu tab buttons */
+document.querySelectorAll('.tabs-more-menu button[data-tab]').forEach(btn=>{
+  btn.addEventListener('click',()=>{ closeMoreMenu(); switchTab(btn.dataset.tab); });
+});
+
+function switchTab(name){
+  closeDatePicker();
+  document.querySelectorAll('nav.tabs > button[data-tab]').forEach(b=>{
+    b.classList.toggle('active', b.dataset.tab===name);
+  });
+  const isMenuTab = MENU_TABS.includes(name);
+  document.getElementById('moreMenuBtn').classList.toggle('menu-active', isMenuTab);
+  document.querySelectorAll('.tabs-more-menu button').forEach(b=>{
+    b.classList.toggle('active-menu-item', b.dataset.tab===name);
+  });
+  document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='expenses'){ populateMatItemSelect(); renderMaterials(); }
+  if(name==='products'){ renderProducts(); renderBomEditor(); renderCostAnalysis(); }
+  if(name==='costing'){ renderUnits(); renderPriceItems(); }
+  if(name==='sales') renderSales();
+  if(name==='analysis') renderAnalysis();
+}
+
+function refreshAll(){
+  populateProductSelects();
+  populateMatItemSelect();
+  renderMaterials();
+  renderProducts();
+  renderUnits();
+  renderPriceItems();
+  renderBomEditor();
+  renderCostAnalysis();
+  renderSales();
+  renderAnalysis();
+  renderTopSummary();
+}
+
+/* ---------- top summary strip (all-time) ---------- */
+function renderTopSummary(){
+  const sales=loadSales();
+  const materials=loadMaterials();
+  const revenue=sales.reduce((s,r)=>s+r.qty*r.unitPrice,0);
+  const matCost=materials.reduce((s,r)=>s+(Number(r.cost)||0),0);
+  const net=revenue-matCost;
+  document.getElementById('sumSales').textContent=sales.length.toLocaleString('en-US');
+  document.getElementById('sumRevenue').textContent=money(revenue);
+  document.getElementById('sumCost').textContent=money(matCost);
+  document.getElementById('sumProfit').textContent=money(net);
+  const cell=document.getElementById('sumProfitCell');
+  cell.classList.toggle('profit',net>=0);
+  cell.classList.toggle('loss',net<0);
+}
+
+/* =================== MATERIALS =================== */
+let matEditingId=null;
+initDateField('matDate', true);
+initDateField('matFFrom', false);
+initDateField('matFTo', false);
+
+function populateMatItemSelect(){
+  const sel=document.getElementById('matItem');
+  const items=loadPriceItems().slice().sort((a,b)=>a.name.localeCompare(b.name,'fa'));
+  const cur=sel.value;
+  sel.innerHTML='';
+  if(items.length===0){
+    const o=document.createElement('option'); o.value=''; o.textContent='ابتدا در تب «فهرست بها» آیتم اضافه کن'; sel.appendChild(o);
+  } else {
+    items.forEach(i=>{ const o=document.createElement('option'); o.value=i.id; o.textContent=i.name; sel.appendChild(o); });
+  }
+  if([...sel.options].some(o=>o.value===cur)) sel.value=cur;
+  updateMatItemDerived();
+}
+function updateMatItemDerived(){
+  const item=loadPriceItems().find(x=>x.id===document.getElementById('matItem').value);
+  document.getElementById('matUnit').value = item ? item.unit : '';
+  document.getElementById('matUnitPrice').placeholder = item ? ('پیش‌فرض: '+money(item.unitPrice)) : 'پیش‌فرض: فهرست بها';
+  updateMatComputedCost();
+}
+function updateMatComputedCost(){
+  const item=loadPriceItems().find(x=>x.id===document.getElementById('matItem').value);
+  const qty=Number(document.getElementById('matQty').value)||0;
+  const overrideVal=document.getElementById('matUnitPrice').value;
+  const unitPrice = overrideVal!=='' ? Number(overrideVal) : (item?item.unitPrice:0);
+  document.getElementById('matComputedCost').textContent = money(qty*unitPrice)+' تومان';
+}
+document.getElementById('matItem').addEventListener('change',updateMatItemDerived);
+document.getElementById('matQty').addEventListener('input',updateMatComputedCost);
+document.getElementById('matUnitPrice').addEventListener('input',updateMatComputedCost);
+
+const PAGE_SIZE = 50;
+let matPage = 1;
+let salePage = 1;
+
+function renderPager(containerId, totalItems, currentPage, pageSize, onGoto){
+  const el=document.getElementById(containerId);
+  if(!el) return;
+  const totalPages=Math.max(1, Math.ceil(totalItems/pageSize));
+  if(totalPages<=1){ el.innerHTML=''; return; }
+  el.innerHTML=`
+    <button type="button" data-pg="prev" ${currentPage<=1?'disabled':''}>‹ قبلی</button>
+    <span class="pager-info">صفحه ${currentPage} از ${totalPages} (${totalItems} ردیف)</span>
+    <button type="button" data-pg="next" ${currentPage>=totalPages?'disabled':''}>بعدی ›</button>`;
+  el.querySelector('[data-pg="prev"]').addEventListener('click',()=>onGoto(currentPage-1));
+  el.querySelector('[data-pg="next"]').addEventListener('click',()=>onGoto(currentPage+1));
+}
+
+function renderMaterials(){
+  const all=loadMaterials().slice().sort((a,b)=>b.date.localeCompare(a.date));
+  const ff=getDateFieldValue(document.getElementById('matFFrom'));
+  const fto=getDateFieldValue(document.getElementById('matFTo'));
+  const fs=document.getElementById('matFSearch').value.trim().toLowerCase();
+  const filtered=all.filter(r=>{
+    if(ff && r.date<ff) return false;
+    if(fto && r.date>fto) return false;
+    if(fs && !((r.itemName||r.title||'').toLowerCase().includes(fs))) return false;
+    return true;
+  });
+  const totalPages=Math.max(1, Math.ceil(filtered.length/PAGE_SIZE));
+  if(matPage>totalPages) matPage=totalPages;
+  if(matPage<1) matPage=1;
+  const pageItems=filtered.slice((matPage-1)*PAGE_SIZE, matPage*PAGE_SIZE);
+
+  const body=document.getElementById('matBody');
+  body.innerHTML='';
+  document.getElementById('matEmpty').style.display=filtered.length?'none':'block';
+  let sum=0;
+  filtered.forEach(r=>{ sum+=Number(r.cost)||0; });
+  pageItems.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${jalaliLong(r.date)}</td>
+      <td>${escapeHtml(r.itemName||r.title||'—')}</td>
+      <td class="mono">${r.qty? escapeHtml(String(r.qty))+' '+escapeHtml(r.unit||'') : '—'}</td>
+      <td class="mono">${money(r.cost)}</td>
+      <td><div class="row-actions">
+        <button title="ویرایش" data-edit="${r.id}">✎</button>
+        <button title="حذف" data-del="${r.id}">🗑</button>
+      </div></td>`;
+    body.appendChild(tr);
+  });
+  document.getElementById('matFilteredSum').textContent=money(sum)+' تومان';
+  body.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>editMaterial(b.dataset.edit)));
+  body.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>deleteMaterial(b.dataset.del)));
+  renderPager('matPager', filtered.length, matPage, PAGE_SIZE, (p)=>{ matPage=p; renderMaterials(); });
+}
+function resetMatPageAndRender(){ matPage=1; renderMaterials(); }
+['matFFrom','matFTo'].forEach(id=>document.getElementById(id).addEventListener('change',resetMatPageAndRender));
+function debounce(fn, wait){
+  let t=null;
+  return function(...args){
+    clearTimeout(t);
+    t=setTimeout(()=>fn.apply(this,args), wait);
+  };
+}
+document.getElementById('matFSearch').addEventListener('input',debounce(resetMatPageAndRender,280));
+
+function editMaterial(id){
+  const r=loadMaterials().find(x=>x.id===id);
+  if(!r) return;
+  matEditingId=id;
+  document.getElementById('matId').value=id;
+  setDateFieldValue(document.getElementById('matDate'), r.date);
+  if(r.itemId) document.getElementById('matItem').value=r.itemId;
+  document.getElementById('matQty').value=r.qty||'';
+  document.getElementById('matUnitPrice').value=r.unitPriceUsed!==undefined?r.unitPriceUsed:'';
+  document.getElementById('matNote').value=r.note||'';
+  updateMatItemDerived();
+  if(r.unit) document.getElementById('matUnit').value=r.unit;
+  document.getElementById('matSubmitBtn').textContent='به‌روزرسانی';
+  document.getElementById('matCancelBtn').style.display='inline-block';
+  switchTab('expenses');
+  document.getElementById('matForm').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function cancelMatEdit(){
+  matEditingId=null;
+  document.getElementById('matForm').reset();
+  document.getElementById('matId').value='';
+  setDateFieldValue(document.getElementById('matDate'), todayISO());
+  populateMatItemSelect();
+  document.getElementById('matSubmitBtn').textContent='ثبت هزینه';
+  document.getElementById('matCancelBtn').style.display='none';
+  hideMsg('matMsg');
+}
+document.getElementById('matCancelBtn').addEventListener('click',cancelMatEdit);
+async function deleteMaterial(id){
+  if(!await showConfirm('این هزینه برای همیشه حذف شود؟')) return;
+  saveMaterials(loadMaterials().filter(r=>r.id!==id));
+  renderMaterials(); renderTopSummary();
+}
+document.getElementById('matForm').addEventListener('submit',function(e){
+  e.preventDefault();
+  const date=getDateFieldValue(document.getElementById('matDate'));
+  const itemId=document.getElementById('matItem').value;
+  const item=loadPriceItems().find(x=>x.id===itemId);
+  const qty=document.getElementById('matQty').value;
+  const overrideVal=document.getElementById('matUnitPrice').value;
+  const note=document.getElementById('matNote').value.trim();
+  if(!date||!item||qty===''){ showMsg('matMsg','لطفاً تاریخ، آیتم و مقدار را وارد کنید.','err'); return; }
+  if(Number(qty)<=0 || Number.isNaN(Number(qty))){ showMsg('matMsg','مقدار باید عددی بزرگ‌تر از صفر باشد.','err'); return; }
+  if(overrideVal!=='' && (Number(overrideVal)<0 || Number.isNaN(Number(overrideVal)))){ showMsg('matMsg','قیمت واحد نمی‌تواند منفی باشد.','err'); return; }
+  const unitPriceUsed = overrideVal!=='' ? Number(overrideVal) : item.unitPrice;
+  const cost = Number(qty)*unitPriceUsed;
+  const rec={date, itemId:item.id, itemName:item.name, unit:item.unit, qty:Number(qty), unitPriceUsed, cost, note};
+  const all=loadMaterials();
+  if(matEditingId){
+    const idx=all.findIndex(r=>r.id===matEditingId);
+    if(idx>-1) all[idx]={...all[idx],...rec};
+    saveMaterials(all);
+    showMsg('matMsg','هزینه با موفقیت به‌روزرسانی شد.','ok');
+  } else {
+    all.push({id:uid(),...rec,createdAt:Date.now()});
+    saveMaterials(all);
+    showMsg('matMsg','هزینه با موفقیت ثبت شد.','ok');
+  }
+  const items=loadPriceItems();
+  const idx=items.findIndex(x=>x.id===item.id);
+  if(idx>-1){
+    items[idx]={...items[idx], unitPrice:unitPriceUsed, priceDate:date};
+    savePriceItems(items);
+    renderPriceItems(); renderBomEditor(); renderCostAnalysis();
+  }
+  cancelMatEdit();
+  renderMaterials(); renderTopSummary();
+});
+
+/* =================== PRODUCTS =================== */
+let prodEditingId=null;
+let pendingPhotoData=null;
+initDateField('prodDate', true);
+
+const PHOTO_BUCKET='product-photos';
+
+function fileToCompressedBlob(file,maxDim,quality){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        let w=img.width,h=img.height;
+        if(w>maxDim||h>maxDim){
+          if(w>h){ h=Math.round(h*maxDim/w); w=maxDim; } else { w=Math.round(w*maxDim/h); h=maxDim; }
+        }
+        const canvas=document.createElement('canvas');
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        canvas.toBlob(blob=>{
+          if(!blob) reject(new Error('canvas toBlob failed'));
+          else resolve(blob);
+        },'image/jpeg',quality);
+      };
+      img.onerror=()=>reject(new Error('invalid image'));
+      img.src=e.target.result;
+    };
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+function photoPathFromUrl(url){
+  if(!url) return null;
+  const marker=`/object/public/${PHOTO_BUCKET}/`;
+  const idx=url.indexOf(marker);
+  return idx>-1 ? url.slice(idx+marker.length) : null;
+}
+async function uploadProductPhoto(blob){
+  const path=`${BUSINESS_ID}/${uid()}.jpg`;
+  const {error}=await supabase.storage.from(PHOTO_BUCKET).upload(path, blob, {contentType:'image/jpeg', upsert:false});
+  if(error) throw error;
+  const {data}=supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+async function deleteProductPhotoByUrl(url){
+  const path=photoPathFromUrl(url);
+  if(!path) return;
+  try{ await supabase.storage.from(PHOTO_BUCKET).remove([path]); }
+  catch(e){ console.warn('حذف عکس از Storage ناموفق بود (نادیده گرفته شد):', e); }
+}
+document.getElementById('prodPhotoInput').addEventListener('change',async function(e){
+  const file=e.target.files[0];
+  if(!file) return;
+  showMsg('prodMsg','در حال بارگذاری عکس...','ok');
+  try{
+    const blob=await fileToCompressedBlob(file,640,0.72);
+    const url=await uploadProductPhoto(blob);
+    pendingPhotoData=url;
+    renderPhotoPreview(pendingPhotoData);
+    hideMsg('prodMsg');
+  }catch(err){
+    console.error('آپلود عکس ناموفق بود:', err);
+    showMsg('prodMsg','بارگذاری عکس ناموفق بود. اتصال اینترنت را بررسی کن.','err');
+  }
+});
+document.getElementById('prodPhotoRemove').addEventListener('click',function(){
+  pendingPhotoData=null;
+  document.getElementById('prodPhotoInput').value='';
+  renderPhotoPreview(null);
+});
+function isSafeImageUrl(url){
+  if(!url || typeof url!=='string') return false;
+  return /^https:\/\//i.test(url) || /^http:\/\//i.test(url) || /^data:image\//i.test(url);
+}
+function buildImgEl(url){
+  const img=document.createElement('img');
+  img.alt='';
+  img.src=url;
+  return img;
+}
+
+function renderPhotoPreview(url){
+  const box=document.getElementById('prodPhotoPreview');
+  const removeBtn=document.getElementById('prodPhotoRemove');
+  box.innerHTML='';
+  if(url && isSafeImageUrl(url)){
+    box.appendChild(buildImgEl(url));
+    removeBtn.style.display='inline-block';
+  } else {
+    const span=document.createElement('span');
+    span.textContent='بدون عکس';
+    box.appendChild(span);
+    removeBtn.style.display='none';
+  }
+}
+
+function renderProducts(){
+  const all=loadProducts().slice().sort((a,b)=>b.priceDate.localeCompare(a.priceDate));
+  const grid=document.getElementById('productGrid');
+  grid.innerHTML='';
+  document.getElementById('prodEmpty').style.display=all.length?'none':'block';
+  all.forEach(p=>{
+    const card=document.createElement('div');
+    card.className='product-card';
+    const photoDiv=document.createElement('div');
+    photoDiv.className='product-photo';
+    if(p.photo && isSafeImageUrl(p.photo)){
+      photoDiv.appendChild(buildImgEl(p.photo));
+    } else {
+      const ph=document.createElement('span');
+      ph.className='ph-empty';
+      ph.textContent='بدون عکس';
+      photoDiv.appendChild(ph);
+    }
+    card.appendChild(photoDiv);
+    const infoDiv=document.createElement('div');
+    infoDiv.className='product-info';
+    infoDiv.innerHTML=`
+      <div class="pname">${escapeHtml(p.name)}</div>
+      <div class="pcost">${money(p.sellPrice)} تومان</div>
+      <div class="pdate">${jalaliLong(p.priceDate)}</div>`;
+    card.appendChild(infoDiv);
+    const actionsDiv=document.createElement('div');
+    actionsDiv.className='product-actions';
+    actionsDiv.innerHTML=`
+      <button data-edit="${p.id}">ویرایش</button>
+      <button data-del="${p.id}">حذف</button>`;
+    card.appendChild(actionsDiv);
+    grid.appendChild(card);
+  });
+  grid.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>editProduct(b.dataset.edit)));
+  grid.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>deleteProduct(b.dataset.del)));
+}
+function editProduct(id){
+  const p=loadProducts().find(x=>x.id===id);
+  if(!p) return;
+  prodEditingId=id;
+  document.getElementById('prodId').value=id;
+  document.getElementById('prodName').value=p.name;
+  document.getElementById('prodSellPrice').value=p.sellPrice;
+  document.getElementById('prodNote').value=p.note||'';
+  setDateFieldValue(document.getElementById('prodDate'), p.priceDate);
+  pendingPhotoData=p.photo||null;
+  renderPhotoPreview(pendingPhotoData);
+  currentBomRows = (p.bom||[]).map(b=>({...b}));
+  renderBomEditor();
+  document.getElementById('prodFormTitle').innerHTML='<span class="icon">✎</span> ویرایش محصول';
+  document.getElementById('prodSubmitBtn').textContent='به‌روزرسانی';
+  document.getElementById('prodCancelBtn').style.display='inline-block';
+  switchTab('products');
+  document.getElementById('prodForm').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function cancelProdEdit(){
+  prodEditingId=null;
+  document.getElementById('prodForm').reset();
+  document.getElementById('prodId').value='';
+  pendingPhotoData=null;
+  renderPhotoPreview(null);
+  setDateFieldValue(document.getElementById('prodDate'), todayISO());
+  currentBomRows=[];
+  renderBomEditor();
+  document.getElementById('prodFormTitle').innerHTML='<span class="icon">＋</span> ثبت محصول جدید';
+  document.getElementById('prodSubmitBtn').textContent='ثبت محصول';
+  document.getElementById('prodCancelBtn').style.display='none';
+  hideMsg('prodMsg');
+}
+document.getElementById('prodCancelBtn').addEventListener('click',cancelProdEdit);
+async function deleteProduct(id){
+  if(!await showConfirm('این محصول حذف شود؟')) return;
+  const target=loadProducts().find(p=>p.id===id);
+  saveProducts(loadProducts().filter(r=>r.id!==id));
+  renderProducts(); populateProductSelects(); renderCostAnalysis();
+  if(target && target.photo) deleteProductPhotoByUrl(target.photo);
+}
+document.getElementById('prodBomAddRow').addEventListener('click',function(){
+  const items=loadPriceItems();
+  if(items.length===0){ showMsg('prodMsg','ابتدا در تب «فهرست بها» حداقل یک آیتم اضافه کن.','err'); return; }
+  currentBomRows.push({itemId:items[0].id, qty:1});
+  renderBomEditor();
+});
+document.getElementById('prodForm').addEventListener('submit',function(e){
+  e.preventDefault();
+  const name=document.getElementById('prodName').value.trim();
+  const sellPrice=document.getElementById('prodSellPrice').value;
+  const priceDate=getDateFieldValue(document.getElementById('prodDate'));
+  const note=document.getElementById('prodNote').value.trim();
+  if(!name||sellPrice===''||!priceDate){ showMsg('prodMsg','لطفاً نام، قیمت فروش و تاریخ را وارد کنید.','err'); return; }
+  if(Number(sellPrice)<0 || Number.isNaN(Number(sellPrice))){ showMsg('prodMsg','قیمت فروش نمی‌تواند منفی باشد.','err'); return; }
+  const cleanBom=currentBomRows.filter(r=>r.itemId && Number(r.qty)>0).map(r=>({itemId:r.itemId, qty:Number(r.qty)}));
+  const all=loadProducts();
+  const rec={name,sellPrice:Number(sellPrice),priceDate,note,photo:pendingPhotoData||null,bom:cleanBom};
+  if(prodEditingId){
+    const idx=all.findIndex(r=>r.id===prodEditingId);
+    if(idx>-1) all[idx]={...all[idx],...rec};
+    saveProducts(all);
+    showMsg('prodMsg','محصول با موفقیت به‌روزرسانی شد.','ok');
+  } else {
+    all.push({id:uid(),...rec,createdAt:Date.now()});
+    saveProducts(all);
+    showMsg('prodMsg','محصول با موفقیت ثبت شد.','ok');
+  }
+  cancelProdEdit();
+  renderProducts(); populateProductSelects(); renderCostAnalysis();
+});
+
+/* =================== COSTING: UNITS + PRICE LIST + COST ANALYSIS =================== */
+let priceItemEditingId=null;
+let currentBomRows=[];
+
+/* --- units --- */
+function renderUnits(){
+  const all=loadUnits();
+  const body=document.getElementById('unitBody');
+  body.innerHTML='';
+  document.getElementById('unitEmpty').style.display=all.length?'none':'block';
+  all.forEach(u=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${escapeHtml(u.name)}</td>
+      <td><div class="row-actions"><button title="حذف" data-del="${u.id}">🗑</button></div></td>`;
+    body.appendChild(tr);
+  });
+  body.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>deleteUnit(b.dataset.del)));
+  populatePriceItemUnitSelect();
+}
+async function deleteUnit(id){
+  const unit=loadUnits().find(u=>u.id===id);
+  if(!unit) return;
+  if(!await showConfirm('این واحد حذف شود؟')) return;
+  saveUnits(loadUnits().filter(u=>u.id!==id));
+  renderUnits();
+}
+document.getElementById('unitForm').addEventListener('submit',function(e){
+  e.preventDefault();
+  const name=document.getElementById('unitName').value.trim();
+  if(!name){ showMsg('unitMsg','نام واحد را وارد کن.','err'); return; }
+  const all=loadUnits();
+  if(all.some(u=>u.name===name)){ showMsg('unitMsg','این واحد قبلاً ثبت شده است.','err'); return; }
+  all.push({id:uid(), name});
+  saveUnits(all);
+  document.getElementById('unitForm').reset();
+  showMsg('unitMsg','واحد با موفقیت اضافه شد.','ok');
+  renderUnits();
+});
+function populatePriceItemUnitSelect(){
+  const sel=document.getElementById('priceItemUnit');
+  const units=loadUnits();
+  const cur=sel.value;
+  sel.innerHTML='';
+  if(units.length===0){
+    const o=document.createElement('option'); o.value=''; o.textContent='ابتدا یک واحد اضافه کن'; sel.appendChild(o);
+  } else {
+    units.forEach(u=>{ const o=document.createElement('option'); o.value=u.name; o.textContent=u.name; sel.appendChild(o); });
+  }
+  if([...sel.options].some(o=>o.value===cur)) sel.value=cur;
+}
+
+/* --- price list --- */
+initDateField('priceItemDate', true);
+function renderPriceItems(){
+  const all=loadPriceItems().slice().sort((a,b)=>a.name.localeCompare(b.name,'fa'));
+  const body=document.getElementById('priceItemBody');
+  body.innerHTML='';
+  document.getElementById('priceItemEmpty').style.display=all.length?'none':'block';
+  all.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${escapeHtml(r.name)}</td>
+      <td>${escapeHtml(r.unit)}</td>
+      <td class="mono">${money(r.unitPrice)}</td>
+      <td>${r.priceDate ? jalaliLong(r.priceDate) : '—'}</td>
+      <td><div class="row-actions">
+        <button title="ویرایش" data-edit="${r.id}">✎</button>
+        <button title="حذف" data-del="${r.id}">🗑</button>
+      </div></td>`;
+    body.appendChild(tr);
+  });
+  body.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>editPriceItem(b.dataset.edit)));
+  body.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>deletePriceItem(b.dataset.del)));
+}
+function editPriceItem(id){
+  const r=loadPriceItems().find(x=>x.id===id);
+  if(!r) return;
+  priceItemEditingId=id;
+  document.getElementById('priceItemId').value=id;
+  document.getElementById('priceItemName').value=r.name;
+  populatePriceItemUnitSelect();
+  document.getElementById('priceItemUnit').value=r.unit;
+  document.getElementById('priceItemUnitPrice').value=r.unitPrice;
+  setDateFieldValue(document.getElementById('priceItemDate'), r.priceDate || todayISO());
+  document.getElementById('priceItemSubmitBtn').textContent='به‌روزرسانی';
+  document.getElementById('priceItemCancelBtn').style.display='inline-block';
+  switchTab('costing');
+  document.getElementById('priceItemForm').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function cancelPriceItemEdit(){
+  priceItemEditingId=null;
+  document.getElementById('priceItemForm').reset();
+  document.getElementById('priceItemId').value='';
+  populatePriceItemUnitSelect();
+  setDateFieldValue(document.getElementById('priceItemDate'), todayISO());
+  document.getElementById('priceItemSubmitBtn').textContent='ثبت آیتم';
+  document.getElementById('priceItemCancelBtn').style.display='none';
+  hideMsg('priceItemMsg');
+}
+document.getElementById('priceItemCancelBtn').addEventListener('click',cancelPriceItemEdit);
+async function deletePriceItem(id){
+  if(!await showConfirm('این آیتم از فهرست بها حذف شود؟ (از موادبری محصولاتی که از آن استفاده کرده‌اند نیز حذف می‌شود)')) return;
+  savePriceItems(loadPriceItems().filter(r=>r.id!==id));
+  const products=loadProducts().map(p=>({...p, bom:(p.bom||[]).filter(b=>b.itemId!==id)}));
+  saveProducts(products);
+  currentBomRows = currentBomRows.filter(r=>r.itemId!==id);
+  renderPriceItems(); populateMatItemSelect(); renderBomEditor(); renderCostAnalysis();
+}
+document.getElementById('priceItemForm').addEventListener('submit',function(e){
+  e.preventDefault();
+  const name=document.getElementById('priceItemName').value.trim();
+  const unit=document.getElementById('priceItemUnit').value;
+  const unitPrice=document.getElementById('priceItemUnitPrice').value;
+  const priceDate=getDateFieldValue(document.getElementById('priceItemDate'));
+  if(!name||!unit||unitPrice===''||!priceDate){ showMsg('priceItemMsg','لطفاً نام، واحد، قیمت واحد و تاریخ را وارد کنید.','err'); return; }
+  if(Number(unitPrice)<0 || Number.isNaN(Number(unitPrice))){ showMsg('priceItemMsg','قیمت واحد نمی‌تواند منفی باشد.','err'); return; }
+  const all=loadPriceItems();
+  if(priceItemEditingId){
+    const idx=all.findIndex(r=>r.id===priceItemEditingId);
+    if(idx>-1) all[idx]={...all[idx], name, unit, unitPrice:Number(unitPrice), priceDate};
+    savePriceItems(all);
+    showMsg('priceItemMsg','آیتم با موفقیت به‌روزرسانی شد.','ok');
+  } else {
+    all.push({id:uid(), name, unit, unitPrice:Number(unitPrice), priceDate});
+    savePriceItems(all);
+    showMsg('priceItemMsg','آیتم با موفقیت ثبت شد.','ok');
+  }
+  cancelPriceItemEdit();
+  renderPriceItems(); populateMatItemSelect(); renderBomEditor(); renderCostAnalysis();
+});
+
+/* --- BOM builder --- */
+function renderBomEditor(){
+  const wrap=document.getElementById('prodBomRows');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  const items=loadPriceItems();
+  if(items.length===0){
+    wrap.innerHTML='<p class="hint">ابتدا در تب «فهرست بها» حداقل یک آیتم اضافه کن.</p>';
+  } else if(currentBomRows.length===0){
+    wrap.innerHTML='<p class="hint">هنوز آیتمی برای این محصول اضافه نشده.</p>';
+  }
+  currentBomRows.forEach((row,idx)=>{
+    const item=items.find(i=>i.id===row.itemId);
+    const cost=item ? (Number(row.qty)||0)*item.unitPrice : 0;
+    const options=items.map(i=>`<option value="${i.id}" ${i.id===row.itemId?'selected':''}>${escapeHtml(i.name)} (${escapeHtml(i.unit)})</option>`).join('');
+    const div=document.createElement('div');
+    div.className='bom-row';
+    div.innerHTML=`
+      <select data-idx="${idx}" class="bom-item-select">${options}</select>
+      <input type="number" inputmode="numeric" min="0" step="any" value="${row.qty}" data-idx="${idx}" class="bom-qty-input" placeholder="مقدار">
+      <div class="bom-cost mono">${money(cost)}</div>
+      <button type="button" data-idx="${idx}" class="bom-remove" title="حذف">🗑</button>`;
+    wrap.appendChild(div);
+  });
+  wrap.querySelectorAll('.bom-item-select').forEach(el=>el.addEventListener('change',function(){
+    currentBomRows[Number(this.dataset.idx)].itemId=this.value; renderBomEditor();
+  }));
+  wrap.querySelectorAll('.bom-qty-input').forEach(el=>el.addEventListener('input',function(){
+    currentBomRows[Number(this.dataset.idx)].qty=this.value; renderBomEditor();
+  }));
+  wrap.querySelectorAll('.bom-remove').forEach(el=>el.addEventListener('click',function(){
+    currentBomRows.splice(Number(this.dataset.idx),1); renderBomEditor();
+  }));
+  const total=currentBomRows.reduce((s,row)=>{
+    const item=items.find(i=>i.id===row.itemId);
+    return s + (item ? (Number(row.qty)||0)*item.unitPrice : 0);
+  },0);
+  const totalEl=document.getElementById('prodBomTotal');
+  if(totalEl) totalEl.textContent=money(total)+' تومان';
+}
+
+/* --- cost analysis --- */
+function renderCostAnalysis(){
+  const items=loadPriceItems();
+  const products=loadProducts();
+  const body=document.getElementById('costAnalysisBody');
+  body.innerHTML='';
+  document.getElementById('costAnalysisEmpty').style.display=products.length?'none':'block';
+  products.slice().sort((a,b)=>a.name.localeCompare(b.name,'fa')).forEach(p=>{
+    const cost=computeProductCost(p, items);
+    const margin=p.sellPrice-cost;
+    const marginPct = p.sellPrice>0 ? Math.round(margin/p.sellPrice*100) : null;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${escapeHtml(p.name)}</td>
+      <td class="mono">${money(cost)}</td>
+      <td class="mono">${money(p.sellPrice)}</td>
+      <td class="mono ${margin>=0?'profit-pos':'profit-neg'}">${money(margin)}</td>
+      <td class="mono ${margin>=0?'profit-pos':'profit-neg'}">${marginPct===null?'—':marginPct+'%'}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+/* =================== SALES =================== */
+let saleEditingId=null;
+initDateField('saleDate', true);
+initDateField('saleFFrom', false);
+initDateField('saleFTo', false);
+
+function populateProductSelects(){
+  const products=loadProducts();
+  const targets=[
+    {el:document.getElementById('saleProduct'), withAll:false},
+    {el:document.getElementById('saleFProduct'), withAll:true},
+  ];
+  targets.forEach(t=>{
+    const cur=t.el.value;
+    t.el.innerHTML='';
+    if(t.withAll){ const o=document.createElement('option'); o.value=''; o.textContent='همه'; t.el.appendChild(o); }
+    products.forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=p.name; t.el.appendChild(o); });
+    if([...t.el.options].some(o=>o.value===cur)) t.el.value=cur;
+  });
+}
+document.getElementById('saleProduct').addEventListener('change',function(){
+  const p=loadProducts().find(x=>x.id===this.value);
+  if(p) document.getElementById('saleUnitPrice').value=p.sellPrice;
+});
+
+function renderSales(){
+  const products=loadProducts();
+  const prodName=id=>{ const p=products.find(x=>x.id===id); return p? p.name : '(محصول حذف‌شده)'; };
+  const all=loadSales().slice().sort((a,b)=>b.date.localeCompare(a.date));
+  const fp=document.getElementById('saleFProduct').value;
+  const ff=getDateFieldValue(document.getElementById('saleFFrom'));
+  const fto=getDateFieldValue(document.getElementById('saleFTo'));
+  const fs=document.getElementById('saleFSearch').value.trim().toLowerCase();
+  const filtered=all.filter(r=>{
+    if(fp && r.productId!==fp) return false;
+    if(ff && r.date<ff) return false;
+    if(fto && r.date>fto) return false;
+    if(fs && !(r.note||'').toLowerCase().includes(fs)) return false;
+    return true;
+  });
+  const totalPages=Math.max(1, Math.ceil(filtered.length/PAGE_SIZE));
+  if(salePage>totalPages) salePage=totalPages;
+  if(salePage<1) salePage=1;
+  const pageItems=filtered.slice((salePage-1)*PAGE_SIZE, salePage*PAGE_SIZE);
+
+  const body=document.getElementById('saleBody');
+  body.innerHTML='';
+  document.getElementById('saleEmpty').style.display=filtered.length?'none':'block';
+  pageItems.forEach(r=>{
+    const revenue=r.qty*r.unitPrice;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${jalaliLong(r.date)}</td>
+      <td><span class="badge">${escapeHtml(r.productName||prodName(r.productId))}</span></td>
+      <td class="mono">${r.qty}</td>
+      <td class="mono">${money(r.unitPrice)}</td>
+      <td class="mono">${money(revenue)}</td>
+      <td><div class="row-actions">
+        <button title="ویرایش" data-edit="${r.id}">✎</button>
+        <button title="حذف" data-del="${r.id}">🗑</button>
+      </div></td>`;
+    body.appendChild(tr);
+  });
+  body.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>editSale(b.dataset.edit)));
+  body.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>deleteSale(b.dataset.del)));
+  renderPager('salePager', filtered.length, salePage, PAGE_SIZE, (p)=>{ salePage=p; renderSales(); });
+}
+function resetSalePageAndRender(){ salePage=1; renderSales(); }
+document.getElementById('saleFProduct').addEventListener('change',resetSalePageAndRender);
+['saleFFrom','saleFTo'].forEach(id=>document.getElementById(id).addEventListener('change',resetSalePageAndRender));
+document.getElementById('saleFSearch').addEventListener('input',debounce(resetSalePageAndRender,280));
+
+function editSale(id){
+  const r=loadSales().find(x=>x.id===id);
+  if(!r) return;
+  saleEditingId=id;
+  document.getElementById('saleId').value=id;
+  document.getElementById('saleProduct').value=r.productId;
+  document.getElementById('saleQty').value=r.qty;
+  document.getElementById('saleUnitPrice').value=r.unitPrice;
+  document.getElementById('saleNote').value=r.note||'';
+  setDateFieldValue(document.getElementById('saleDate'), r.date);
+  document.getElementById('saleFormTitle').innerHTML='<span class="icon">✎</span> ویرایش فروش';
+  document.getElementById('saleSubmitBtn').textContent='به‌روزرسانی';
+  document.getElementById('saleCancelBtn').style.display='inline-block';
+  switchTab('sales');
+  document.getElementById('saleForm').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function cancelSaleEdit(){
+  saleEditingId=null;
+  document.getElementById('saleForm').reset();
+  document.getElementById('saleId').value='';
+  setDateFieldValue(document.getElementById('saleDate'), todayISO());
+  const p=loadProducts().find(x=>x.id===document.getElementById('saleProduct').value);
+  if(p) document.getElementById('saleUnitPrice').value=p.sellPrice;
+  document.getElementById('saleFormTitle').innerHTML='<span class="icon">＋</span> ثبت فروش جدید';
+  document.getElementById('saleSubmitBtn').textContent='ثبت فروش';
+  document.getElementById('saleCancelBtn').style.display='none';
+  hideMsg('saleMsg');
+}
+document.getElementById('saleCancelBtn').addEventListener('click',cancelSaleEdit);
+async function deleteSale(id){
+  if(!await showConfirm('این فروش برای همیشه حذف شود؟')) return;
+  saveSales(loadSales().filter(r=>r.id!==id));
+  renderSales(); renderTopSummary();
+}
+document.getElementById('saleForm').addEventListener('submit',function(e){
+  e.preventDefault();
+  const productId=document.getElementById('saleProduct').value;
+  const date=getDateFieldValue(document.getElementById('saleDate'));
+  const qty=document.getElementById('saleQty').value;
+  const unitPrice=document.getElementById('saleUnitPrice').value;
+  const note=document.getElementById('saleNote').value.trim();
+  if(!productId||!date||qty===''||unitPrice===''){ showMsg('saleMsg','لطفاً محصول، تاریخ، تعداد و قیمت فروش را وارد کنید.','err'); return; }
+  if(Number(qty)<=0 || Number.isNaN(Number(qty))){ showMsg('saleMsg','تعداد باید عددی بزرگ‌تر از صفر باشد.','err'); return; }
+  if(Number(unitPrice)<0 || Number.isNaN(Number(unitPrice))){ showMsg('saleMsg','قیمت فروش نمی‌تواند منفی باشد.','err'); return; }
+  const product=loadProducts().find(p=>p.id===productId);
+  const rec={
+    productId, productName: product?product.name:'(محصول حذف‌شده)',
+    date, qty:Number(qty), unitPrice:Number(unitPrice), note
+  };
+  const all=loadSales();
+  if(saleEditingId){
+    const idx=all.findIndex(r=>r.id===saleEditingId);
+    if(idx>-1) all[idx]={...all[idx],...rec};
+    saveSales(all);
+    showMsg('saleMsg','فروش با موفقیت به‌روزرسانی شد.','ok');
+  } else {
+    all.push({id:uid(),...rec,createdAt:Date.now()});
+    saveSales(all);
+    showMsg('saleMsg','فروش با موفقیت ثبت شد.','ok');
+  }
+  cancelSaleEdit();
+  renderSales(); renderTopSummary();
+});
+
+/* =================== ANALYSIS =================== */
+initDateField('anFrom', false);
+initDateField('anTo', false);
+['anFrom','anTo'].forEach(id=>document.getElementById(id).addEventListener('change',renderAnalysis));
+
+function renderAnalysis(){
+  const from=getDateFieldValue(document.getElementById('anFrom'));
+  const to=getDateFieldValue(document.getElementById('anTo'));
+  const sales=loadSales().filter(r=>(!from||r.date>=from)&&(!to||r.date<=to));
+  const materials=loadMaterials().filter(r=>(!from||r.date>=from)&&(!to||r.date<=to));
+
+  const revenue=sales.reduce((s,r)=>s+r.qty*r.unitPrice,0);
+  const matCost=materials.reduce((s,r)=>s+(Number(r.cost)||0),0);
+  const net=revenue-matCost;
+
+  document.getElementById('anRevenue').textContent=money(revenue);
+  document.getElementById('anMaterials').textContent=money(matCost);
+  document.getElementById('anNet').textContent=money(net);
+  document.getElementById('anMargin').textContent = revenue>0 ? Math.round(net/revenue*100)+'%' : '—';
+  const netCard=document.getElementById('anNetCard');
+  netCard.classList.toggle('profit',net>=0);
+  netCard.classList.toggle('loss',net<0);
+
+  const byProd={};
+  sales.forEach(r=>{
+    const key=r.productName||'—';
+    if(!byProd[key]) byProd[key]={revenue:0,qty:0};
+    byProd[key].revenue+=r.qty*r.unitPrice;
+    byProd[key].qty+=r.qty;
+  });
+  const prodEntries=Object.entries(byProd).map(([name,v])=>({name,...v})).sort((a,b)=>b.revenue-a.revenue);
+  const maxRevenue=Math.max(1,...prodEntries.map(e=>e.revenue));
+  const byProdEl=document.getElementById('anByProduct');
+  byProdEl.innerHTML='';
+  document.getElementById('anByProductEmpty').style.display=prodEntries.length?'none':'block';
+  prodEntries.forEach(e=>{
+    const pct=Math.max(4,Math.round(e.revenue/maxRevenue*100));
+    const row=document.createElement('div');
+    row.className='bar-row';
+    row.innerHTML=`
+      <div class="name">${escapeHtml(e.name)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+      <div class="bar-val">${money(e.revenue)}</div>`;
+    byProdEl.appendChild(row);
+  });
+
+  const byMonth={};
+  sales.forEach(r=>{
+    const key=jalaliMonthKey(r.date);
+    if(!byMonth[key]) byMonth[key]={revenue:0,cost:0};
+    byMonth[key].revenue+=r.qty*r.unitPrice;
+  });
+  materials.forEach(r=>{
+    const key=jalaliMonthKey(r.date);
+    if(!byMonth[key]) byMonth[key]={revenue:0,cost:0};
+    byMonth[key].cost+=Number(r.cost)||0;
+  });
+  const monthEntries=Object.entries(byMonth).map(([key,v])=>({key,profit:v.revenue-v.cost,...v})).sort((a,b)=>b.key.localeCompare(a.key));
+  const maxAbsMonth=Math.max(1,...monthEntries.map(e=>Math.abs(e.profit)));
+  const byMonthEl=document.getElementById('anByMonth');
+  byMonthEl.innerHTML='';
+  document.getElementById('anByMonthEmpty').style.display=monthEntries.length?'none':'block';
+  monthEntries.forEach(e=>{
+    const pct=Math.max(4,Math.round(Math.abs(e.profit)/maxAbsMonth*100));
+    const row=document.createElement('div');
+    row.className='bar-row';
+    row.innerHTML=`
+      <div class="name">${jalaliMonthLabel(e.key)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${e.profit>=0?'var(--green)':'var(--red)'}"></div></div>
+      <div class="bar-val ${e.profit>=0?'profit-pos':'profit-neg'}">${money(e.profit)}</div>`;
+    byMonthEl.appendChild(row);
+  });
+}
+
+/* ---------- init ---------- */
+async function initApp(){
+  updateSyncBadge();
+
+  const snapshot = loadSnapshotFromLS();
+  if(snapshot) cachedData = snapshot;
+
+  try{
+    cachedData = await loadAllFromSupabase();
+    saveSnapshotToLS();
+  }catch(e){
+    console.error('اتصال اولیه به Supabase ناموفق بود — استفاده از نسخه محلی:', e);
+    if(!snapshot) cachedData = emptyData();
+    updateSyncBadge('offline');
+  }
+
+  if(!cachedData.units || cachedData.units.length===0){
+    const newUnits = DEFAULT_UNITS.map(name=>({id:uid(), name}));
+    saveUnits(newUnits);
+  }
+
+  populateProductSelects();
+  renderUnits();
+  renderPriceItems();
+  populateMatItemSelect();
+  renderMaterials();
+  renderProducts();
+  renderBomEditor();
+  renderCostAnalysis();
+  renderSales();
+  renderAnalysis();
+  renderTopSummary();
+  setupRealtimeListener();
+
+  if(isDirty()) flushQueue();
+}
+
+/* =========================================================
+   AUTH
+   ========================================================= */
+let appInitialized = false;
+let authMode = 'login';
+
+function setAuthMode(mode){
+  authMode = mode;
+  document.getElementById('authSubtitle').textContent =
+    mode==='login' ? 'برای ورود، ایمیل و رمز عبور را وارد کنید.' : 'یک ایمیل و رمز عبور تازه انتخاب کنید.';
+  document.getElementById('authSubmitBtn').textContent = mode==='login' ? 'ورود' : 'ثبت‌نام';
+  document.getElementById('authToggleBtn').textContent = mode==='login' ? 'ثبت‌نام به‌جای ورود' : 'ورود به‌جای ثبت‌نام';
+  hideMsg('authMsg');
+}
+document.getElementById('authToggleBtn').addEventListener('click', ()=>{
+  setAuthMode(authMode==='login' ? 'signup' : 'login');
+});
+
+document.getElementById('authForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  if(!email || !password){ showMsg('authMsg','ایمیل و رمز عبور را وارد کنید.','err'); return; }
+  const submitBtn = document.getElementById('authSubmitBtn');
+  submitBtn.disabled = true;
+  try{
+    if(authMode==='login'){
+      const {error} = await supabase.auth.signInWithPassword({email, password});
+      if(error) throw error;
+    } else {
+      const {error} = await supabase.auth.signUp({email, password});
+      if(error) throw error;
+      showMsg('authMsg','ثبت‌نام انجام شد. اگر تأیید ایمیل فعال باشد، ابتدا ایمیلت را چک کن.','ok');
+    }
+  }catch(err){
+    showMsg('authMsg', err.message || 'ورود ناموفق بود.', 'err');
+  }finally{
+    submitBtn.disabled = false;
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+  await supabase.auth.signOut();
+  location.reload();
+});
+
+/* از upsert به‌جای insert استفاده می‌کنیم تا اگر هر دو نفر همزمان «اولین»
+   کاربر بودند، خطای duplicate key نگیریم. نیاز به unique constraint روی
+   (business_id, user_id) دارد که در اسکریپت SQL اضافه می‌شود. */
+async function ensureBusinessMembership(user){
+  try{
+    const {data, error}=await supabase.from('business_members')
+      .select('user_id').eq('business_id',BUSINESS_ID).eq('user_id', user.id);
+    if(error) throw error;
+    if(data && data.length>0) return true;
+
+    const {count, error:countErr}=await supabase.from('business_members')
+      .select('user_id',{count:'exact',head:true}).eq('business_id',BUSINESS_ID);
+    if(countErr) throw countErr;
+
+    if(!count || count===0){
+      const {error:insErr}=await supabase.from('business_members')
+        .upsert([{business_id:BUSINESS_ID, user_id:user.id, role:'owner'}],
+                {onConflict:'business_id,user_id'});
+      if(insErr){ console.warn('bootstrap membership failed:', insErr); return false; }
+      return true;
+    }
+    return false;
+  }catch(e){ console.warn('ensureBusinessMembership error:', e); return false; }
+}
+
+async function handleAuthed(user){
+  const hasAccess = await ensureBusinessMembership(user);
+  if(!hasAccess){
+    await supabase.auth.signOut();
+    document.getElementById('authOverlay').classList.add('open');
+    showMsg('authMsg','این حساب به هیچ کسب‌وکاری دسترسی ندارد. باید توسط مالک کسب‌وکار دعوت شوید.','err');
+    return;
+  }
+  document.getElementById('authOverlay').classList.remove('open');
+  if(!appInitialized){
+    appInitialized = true;
+    await initApp();
+  }
+}
+function handleSignedOut(){
+  document.getElementById('authOverlay').classList.add('open');
+}
+
+supabase.auth.onAuthStateChange((event, session)=>{
+  if(session && session.user) handleAuthed(session.user);
+  else handleSignedOut();
+});
+</script>
+</body>
+</html>
