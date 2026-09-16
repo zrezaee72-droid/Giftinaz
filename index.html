@@ -65,6 +65,36 @@
     background-image:radial-gradient(circle at 7px 7px, var(--bg) 6px, transparent 7px);
     background-size:14px 14px;background-position:0 0;
   }
+  .receipt-toggle{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;cursor:pointer;padding:6px 4px;user-select:none;
+  border-radius:8px;transition:background .15s ease;
+}
+.receipt-toggle:hover{background:rgba(255,255,255,.04);}
+.receipt-toggle-label{
+  display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;
+}
+.receipt-toggle-label > span:first-child{
+  font-size:20px;font-weight:700;color:var(--gold);direction:ltr;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.receipt-toggle-hint{
+  font-size:11px;color:var(--muted);
+}
+.receipt-toggle-icon{
+  font-size:12px;color:var(--muted);flex-shrink:0;
+  transition:transform .2s ease;
+}
+.receipt.open .receipt-toggle-icon{transform:rotate(180deg);}
+.receipt-body{
+  max-height:0;overflow:hidden;
+  transition:max-height .25s ease, margin-top .25s ease;
+  margin-top:0;
+}
+.receipt.open .receipt-body{
+  max-height:600px;
+  margin-top:12px;
+}
   .receipt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;}
   @media(max-width:520px){.receipt-grid{grid-template-columns:repeat(2,1fr);}}
   .receipt-cell{text-align:center;padding:6px 4px;border-right:1px dashed var(--border);}
@@ -339,7 +369,15 @@
   <div class="sync-stuck-bar" id="dataCapNotice" style="display:none;background:var(--gold-dim);border-color:var(--gold);">
     <span id="dataCapNoticeText"></span>
   </div>
-  <div class="receipt">
+  <div class="receipt" id="receipt">
+  <div class="receipt-toggle" id="receiptToggle">
+    <span class="receipt-toggle-label">
+      <span id="receiptQuickProfit" class="mono">0</span>
+      <span class="receipt-toggle-hint">سود نقدی • برای جزئیات کلیک کن</span>
+    </span>
+    <span class="receipt-toggle-icon" id="receiptToggleIcon">▼</span>
+  </div>
+  <div class="receipt-body" id="receiptBody">
     <div class="receipt-grid">
       <div class="receipt-cell"><div class="val mono" id="sumSales">0</div><div class="lbl">تعداد فروش</div></div>
       <div class="receipt-cell"><div class="val mono" id="sumRevenue">0</div><div class="lbl">درآمد کل (تومان)</div></div>
@@ -352,6 +390,7 @@
       <div class="receipt-cell"><div class="val mono" id="sumExpectedCost">0</div><div class="lbl">هزینه کالای مصرف‌شده</div></div>
       <div class="receipt-cell" id="sumWealthCell"><div class="val mono" id="sumWealth">0</div><div class="lbl">🏆 ثروت کل (تومان)</div></div>
     </div>
+  </div>
   </div>
 </header>
 
@@ -801,7 +840,26 @@ const SUPABASE_URL = 'https://tqjnedvjsovxksdtbdsc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_8h1k_5tJNEX0MQA4E2ds5w__3ARv2TO';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const BUSINESS_ID = '00000000-0000-0000-0000-000000000001';
+/* =========================================================
+   RECEIPT COLLAPSE / EXPAND
+   ========================================================= */
+const LS_RECEIPT_OPEN = 'bizledger_receipt_open';
 
+function initReceiptToggle(){
+  const receipt = document.getElementById('receipt');
+  const toggle = document.getElementById('receiptToggle');
+  if(!receipt || !toggle) return;
+
+  // بازیابی وضعیت قبلی
+  const savedOpen = localStorage.getItem(LS_RECEIPT_OPEN) === '1';
+  if(savedOpen) receipt.classList.add('open');
+
+  toggle.addEventListener('click', () => {
+    const isOpen = receipt.classList.toggle('open');
+    try{ localStorage.setItem(LS_RECEIPT_OPEN, isOpen ? '1' : '0'); }
+    catch(e){}
+  });
+  }
 /* =========================================================
    UUID GENERATOR
    ========================================================= */
@@ -1617,6 +1675,12 @@ function renderTopSummary(){
   document.getElementById('sumRevenue').textContent=money(revenue);
   document.getElementById('sumCost').textContent=money(matCost);
   document.getElementById('sumProfit').textContent=money(net);
+  // مقدار کوچک بالای receipt (حالت جمع) — همان سود نقدی
+const quickEl = document.getElementById('receiptQuickProfit');
+if(quickEl){
+  quickEl.textContent = money(net) + ' تومان';
+  quickEl.style.color = net >= 0 ? 'var(--green)' : 'var(--red)';
+}
   document.getElementById('sumExpected').textContent=money(expected);
   document.getElementById('sumExpectedCost').textContent=money(consumedCost);
   document.getElementById('sumInventory').textContent=money(inventoryValue);
@@ -2650,6 +2714,7 @@ function renderMonthlyProfit(sales, materials, products, priceItems){
 /* ---------- init ---------- */
 async function initApp(){
   updateSyncBadge();
+  initReceiptToggle();
   const snapshot = loadSnapshotFromLS();
   if(snapshot) cachedData = snapshot;
   try{
