@@ -2314,7 +2314,7 @@ function renderCostAnalysis(){
   products.slice().sort((a,b)=>a.name.localeCompare(b.name,'fa')).forEach(p=>{
     const cost=computeProductCost(p, items);
     const margin=p.sellPrice-cost;
-    const marginPct = p.sellPrice>0 ? Math.round(margin/p.sellPrice*100) : null;
+    const marginPct = cost>0 ? Math.round(margin/cost*100) : null;
     const tr=document.createElement('tr');
     tr.innerHTML=`
       <td>${escapeHtml(p.name)}</td>
