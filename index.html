@@ -2594,7 +2594,7 @@ function renderAnalysis(){
   document.getElementById('anRevenue').textContent=money(revenue);
   document.getElementById('anMaterials').textContent=money(matCost);
   document.getElementById('anNet').textContent=money(net);
-  document.getElementById('anMargin').textContent = revenue>0 ? Math.round(net/revenue*100)+'%' : '—';
+  document.getElementById('anMargin').textContent = revenue>0 ? Math.round(net/matCost*100)+'%' : '—';
   document.getElementById('anConsumedCost').textContent=money(consumedCost);
   document.getElementById('anExpected').textContent=money(expected);
   document.getElementById('anInventoryValue').textContent=money(inventoryValue);
