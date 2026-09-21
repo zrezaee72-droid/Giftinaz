@@ -930,7 +930,7 @@ function productToRow(o){
 }
 function saleToRow(o){
   return {id:o.id, business_id:BUSINESS_ID, product_id:o.productId||null, product_name:o.productName,
-    qty:o.qty, unit_price:o.unitPrice, date:o.date, note:o.note||null};
+    qty:o.qty, unit_price:o.unitPrice, date:o.date, note:o.note||null, consumed_cost:o.consumedCost||0};
 }
 function priceItemToRow(o){
   return {id:o.id, business_id:BUSINESS_ID, name:o.name, unit_id:unitIdByName(o.unit),
@@ -1175,7 +1175,7 @@ function materialFromRow(r){
 }
 function saleFromRow(r){
   return {id:r.id, productId:r.product_id, productName:r.product_name, qty:Number(r.qty)||0,
-    unitPrice:Number(r.unit_price)||0, date:r.date, note:r.note||''};
+    unitPrice:Number(r.unit_price)||0, date:r.date, note:r.note||'', consumedCost:Number(r.consumed_cost)||0};
 }
 function unitFromRow(r){ return {id:r.id, name:r.name}; }
 function priceItemFromRow(r){
@@ -1294,7 +1294,7 @@ async function loadAllFromSupabase(){
 
   const salesArr=(salRes.data||[]).map(r=>({
     id:r.id, productId:r.product_id, productName:r.product_name, qty:Number(r.qty)||0,
-    unitPrice:Number(r.unit_price)||0, date:r.date, note:r.note||''
+    unitPrice:Number(r.unit_price)||0, date:r.date, note:r.note||'', consumedCost:Number(r.consumed_cost)||0
   }));
 
   return {materials:materialsArr, products:productsArr, sales:salesArr, priceItems:priceItemsArr, units:unitsArr};
@@ -1347,21 +1347,9 @@ function computeProductCost(product, items){
     return s + (item ? (Number(row.qty)||0)*item.unitPrice : 0);
   },0);
 }
-/* هزینه‌ی کالای مصرف‌شده در فروش‌ها (بر اساس BOM) */
-function computeConsumedCost(sales, products, priceItems){
-  let total = 0;
-  (sales || []).forEach(s => {
-    const product = (products || []).find(p => p.id === s.productId);
-    if (!product || !product.bom) return;
-    const saleQty = Number(s.qty) || 0;
-    product.bom.forEach(b => {
-      const item = (priceItems || []).find(i => i.id === b.itemId);
-      if (!item) return;
-      total += (Number(b.qty) || 0) * (Number(item.unitPrice) || 0) * saleQty;
-    });
-  });
-  return total;
-}
+/* توجه: هزینه‌ی مصرف‌شده‌ی هر فروش دیگه لحظه‌ای محاسبه نمی‌شه —
+   موقع ثبت فروش یک‌بار محاسبه و در خود رکورد (sales.consumedCost) ذخیره میشه
+   تا با تغییر قیمت‌ها در آینده، سود فروش‌های قدیمی عوض نشه. */
 /* ارزش انبار فعلی — فقط آیتم‌های کالا */
 function computeInventoryValue(priceItems, materials, sales, products){
   const items = priceItems || [];
@@ -1666,7 +1654,7 @@ function renderTopSummary(){
   const matCost=materials.reduce((s,r)=>s+(Number(r.cost)||0),0);
   const net=revenue-matCost;
 
-  const consumedCost = computeConsumedCost(sales, products, priceItems);
+  const consumedCost = sales.reduce((s,r)=>s+(Number(r.consumedCost)||0),0);
   const expected = revenue - consumedCost;
   const inventoryValue = computeInventoryValue(priceItems, materials, sales, products);
   const totalWealth = net + inventoryValue;
@@ -2541,9 +2529,12 @@ document.getElementById('saleForm').addEventListener('submit',function(e){
   if(Number(qty)<=0 || Number.isNaN(Number(qty))){ showMsg('saleMsg','تعداد باید عددی بزرگ‌تر از صفر باشد.','err'); return; }
   if(Number(unitPrice)<0 || Number.isNaN(Number(unitPrice))){ showMsg('saleMsg','قیمت فروش نمی‌تواند منفی باشد.','err'); return; }
   const product=loadProducts().find(p=>p.id===productId);
+  /* هزینه‌ی BOM این فروش، با قیمت *همین الان*، محاسبه و برای همیشه ذخیره میشه —
+     تا با ثبت هزینه‌ی جدید در آینده، سود انتظاریِ این فروش دیگه عوض نشه */
+  const consumedCost = product ? computeProductCost(product, loadPriceItems()) * Number(qty) : 0;
   const rec={
     productId, productName: product?product.name:'(محصول حذف‌شده)',
-    date, qty:Number(qty), unitPrice:Number(unitPrice), note
+    date, qty:Number(qty), unitPrice:Number(unitPrice), note, consumedCost
   };
   const all=loadSales();
   if(saleEditingId){
@@ -2586,7 +2577,7 @@ function renderAnalysis(){
   const matCost=materials.reduce((s,r)=>s+(Number(r.cost)||0),0);
   const net=revenue-matCost;
 
-  const consumedCost = computeConsumedCost(sales, products, priceItems);
+  const consumedCost = sales.reduce((s,r)=>s+(Number(r.consumedCost)||0),0);
   const expected = revenue - consumedCost;
   const inventoryValue = computeInventoryValue(priceItems, loadMaterials(), loadSales(), products);
   const totalWealth = net + inventoryValue;
@@ -2652,16 +2643,9 @@ function renderMonthlyProfit(sales, materials, products, priceItems){
     byMonth[key].cashCost += Number(r.cost)||0;
   });
   sales.forEach(s=>{
-    const product = products.find(p => p.id === s.productId);
-    if(!product || !product.bom) return;
-    const saleQty = Number(s.qty) || 0;
     const key = jalaliMonthKey(s.date);
     if(!byMonth[key]) byMonth[key]={revenue:0,cashCost:0,consumedCost:0};
-    product.bom.forEach(b => {
-      const item = priceItems.find(i => i.id === b.itemId);
-      if(!item) return;
-      byMonth[key].consumedCost += (Number(b.qty)||0) * (Number(item.unitPrice)||0) * saleQty;
-    });
+    byMonth[key].consumedCost += Number(s.consumedCost)||0;
   });
 
   const monthEntries = Object.entries(byMonth).map(([key,v])=>{
