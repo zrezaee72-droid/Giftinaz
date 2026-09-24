@@ -705,6 +705,15 @@
           <label>توضیحات (اختیاری)</label>
           <textarea id="saleNote" placeholder="مثلاً: نام مشتری یا کانال فروش"></textarea>
         </div>
+        <div class="field">
+          <button type="button" class="btn btn-ghost btn-small" id="saleBomToggleBtn">✎ ویرایش موادبری این فروش (سفارشی)</button>
+          <div id="saleBomSection" style="display:none;margin-top:10px">
+            <p class="hint">پیش‌فرض از دستور محصول پر می‌شود. برای سفارش خاص (مثلاً روبان به‌جای گل) فقط همین‌جا تغییرش بده — محصول اصلی و فروش‌های دیگه دست‌نخورده می‌مونن.</p>
+            <div id="saleBomRows"></div>
+            <button type="button" class="btn btn-ghost btn-small" id="saleBomAddRow">＋ افزودن آیتم</button>
+            <div class="kv" style="margin-top:8px;font-weight:700"><span>هزینه‌ی موادبری این فروش (هر واحد)</span><span class="mono" id="saleBomTotal">0 تومان</span></div>
+          </div>
+        </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-primary" id="saleSubmitBtn">ثبت فروش</button>
           <button type="button" class="btn btn-ghost" id="saleCancelBtn" style="display:none">انصراف از ویرایش</button>
@@ -2428,11 +2437,105 @@ function populateProductSelects(){
     products.forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=p.name; t.el.appendChild(o); });
     if([...t.el.options].some(o=>o.value===cur)) t.el.value=cur;
   });
+  /* اگه در حال ویرایش یه فروش موجود نیستیم، موادبریِ پیش‌نمایش رو با محصولِ
+     الان انتخاب‌شده در فرم فروش هماهنگ نگه می‌داریم — چون select ممکنه بدون
+     رویداد change (مثلاً موقع بار اول صفحه) رو یه محصول ثابت بمونه */
+  if(typeof saleEditingId!=='undefined' && !saleEditingId){
+    const p=products.find(x=>x.id===document.getElementById('saleProduct').value);
+    currentSaleConsumption = p ? (p.bom||[]).map(b=>({...b})) : [];
+    if(document.getElementById('saleBomSection').style.display!=='none') renderSaleBomEditor();
+  }
 }
 document.getElementById('saleProduct').addEventListener('change',function(){
   const p=loadProducts().find(x=>x.id===this.value);
   if(p) document.getElementById('saleUnitPrice').value=p.sellPrice;
+  /* موادبری سفارشی این فروش، با تغییر محصول، به‌طور پیش‌فرض دوباره از خود محصول پر میشه */
+  currentSaleConsumption = p ? (p.bom||[]).map(b=>({...b})) : [];
+  renderSaleBomEditor();
 });
+
+/* ---------- ویرایش موادبری سفارشی هر فروش (override نسبت به BOM محصول) ---------- */
+let currentSaleConsumption=[];
+document.getElementById('saleBomToggleBtn').addEventListener('click',function(){
+  const sec=document.getElementById('saleBomSection');
+  const open = sec.style.display==='none';
+  sec.style.display = open ? 'block' : 'none';
+  this.textContent = open ? '✎ بستن ویرایش موادبری' : '✎ ویرایش موادبری این فروش (سفارشی)';
+  if(open) renderSaleBomEditor();
+});
+document.getElementById('saleBomAddRow').addEventListener('click',function(){
+  const items=loadPriceItems();
+  if(items.length===0){ showMsg('saleMsg','ابتدا در تب «فهرست بها» حداقل یک آیتم اضافه کن.','err'); return; }
+  currentSaleConsumption.push({itemId:items[0].id, qty:1});
+  renderSaleBomEditor();
+});
+function renderSaleBomEditor(){
+  const wrap=document.getElementById('saleBomRows');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  const items=loadPriceItems();
+  if(items.length===0){
+    wrap.innerHTML='<p class="hint">ابتدا در تب «فهرست بها» حداقل یک آیتم اضافه کن.</p>';
+    document.getElementById('saleBomTotal').textContent='0 تومان';
+    return;
+  }
+  if(currentSaleConsumption.length===0){
+    wrap.innerHTML='<p class="hint">این محصول موادبری‌ای نداره، یا هنوز محصولی انتخاب نشده.</p>';
+  }
+  currentSaleConsumption.forEach((row,idx)=>{
+    const item=items.find(i=>i.id===row.itemId);
+    const cost=item ? (Number(row.qty)||0)*item.unitPrice : 0;
+    const options=items.map(i=>{
+      const kindTag = i.kind === 'service' ? ' [خدمات]' : ' [کالا]';
+      return `<option value="${i.id}" ${i.id===row.itemId?'selected':''}>${escapeHtml(i.name)}${kindTag} (${escapeHtml(i.unit)})</option>`;
+    }).join('');
+    const div=document.createElement('div');
+    div.className='bom-row';
+    div.innerHTML=`
+      <select data-idx="${idx}" class="sale-bom-item-select">${options}</select>
+      <input type="text" inputmode="decimal" value="${row.qty}" data-idx="${idx}" class="sale-bom-qty-input" placeholder="مقدار">
+      <div class="bom-cost mono">${money(cost)}</div>
+      <button type="button" data-idx="${idx}" class="bom-remove" title="حذف">🗑</button>`;
+    wrap.appendChild(div);
+  });
+
+  wrap.querySelectorAll('.sale-bom-item-select').forEach(el=>el.addEventListener('change',function(){
+    currentSaleConsumption[Number(this.dataset.idx)].itemId=this.value;
+    renderSaleBomEditor();
+  }));
+  wrap.querySelectorAll('.sale-bom-qty-input').forEach(el=>el.addEventListener('input',function(){
+    const idx=Number(this.dataset.idx);
+    let v = this.value.replace(/[^\d.]/g, '');
+    const firstDot = v.indexOf('.');
+    if (firstDot !== -1) v = v.slice(0, firstDot+1) + v.slice(firstDot+1).replace(/\./g, '');
+    if (v !== this.value) this.value = v;
+    currentSaleConsumption[idx].qty = v;
+    const item = items.find(i => i.id === currentSaleConsumption[idx].itemId);
+    const rowCost = item ? (Number(v)||0) * item.unitPrice : 0;
+    const costEl = this.parentElement.querySelector('.bom-cost');
+    if (costEl) costEl.textContent = money(rowCost);
+    updateSaleBomTotal();
+  }));
+  wrap.querySelectorAll('.bom-remove').forEach(el=>el.addEventListener('click',function(){
+    currentSaleConsumption.splice(Number(this.dataset.idx),1);
+    renderSaleBomEditor();
+  }));
+
+  updateSaleBomTotal();
+}
+function updateSaleBomTotal(){
+  const items=loadPriceItems();
+  const total=currentSaleConsumption.reduce((s,row)=>{
+    const item=items.find(i=>i.id===row.itemId);
+    return s + (item ? (Number(row.qty)||0)*item.unitPrice : 0);
+  },0);
+  const totalEl=document.getElementById('saleBomTotal');
+  if(totalEl) totalEl.textContent=money(total)+' تومان';
+}
+function collapseSaleBomEditor(){
+  document.getElementById('saleBomSection').style.display='none';
+  document.getElementById('saleBomToggleBtn').textContent='✎ ویرایش موادبری این فروش (سفارشی)';
+}
 
 function renderSales(){
   const products=loadProducts();
@@ -2491,6 +2594,17 @@ function editSale(id){
   document.getElementById('saleUnitPrice').value=r.unitPrice;
   document.getElementById('saleNote').value=r.note||'';
   setDateFieldValue(document.getElementById('saleDate'), r.date);
+  /* موادبریِ سفارشیِ ذخیره‌شده‌ی همین فروش رو برمی‌گردونیم (نه دستور فعلی محصول) —
+     مقادیر ذخیره‌شده «کل مصرف» بودن، اینجا به «هر واحد» تبدیل میشن تا تو ادیتور درست نشون داده بشه */
+  const product=loadProducts().find(p=>p.id===r.productId);
+  if(r.consumption && r.consumption.length>0){
+    currentSaleConsumption = r.consumption.map(c=>({
+      itemId:c.itemId, qty: r.qty>0 ? (Number(c.qty)||0)/r.qty : 0
+    }));
+  } else {
+    currentSaleConsumption = product ? (product.bom||[]).map(b=>({...b})) : [];
+  }
+  collapseSaleBomEditor();
   document.getElementById('saleFormTitle').innerHTML='<span class="icon">✎</span> ویرایش فروش';
   document.getElementById('saleSubmitBtn').textContent='به‌روزرسانی';
   document.getElementById('saleCancelBtn').style.display='inline-block';
@@ -2504,6 +2618,8 @@ function cancelSaleEdit(){
   setDateFieldValue(document.getElementById('saleDate'), todayISO());
   const p=loadProducts().find(x=>x.id===document.getElementById('saleProduct').value);
   if(p) document.getElementById('saleUnitPrice').value=p.sellPrice;
+  currentSaleConsumption = p ? (p.bom||[]).map(b=>({...b})) : [];
+  collapseSaleBomEditor();
   document.getElementById('saleFormTitle').innerHTML='<span class="icon">＋</span> ثبت فروش جدید';
   document.getElementById('saleSubmitBtn').textContent='ثبت فروش';
   document.getElementById('saleCancelBtn').style.display='none';
@@ -2526,15 +2642,20 @@ document.getElementById('saleForm').addEventListener('submit',function(e){
   if(Number(qty)<=0 || Number.isNaN(Number(qty))){ showMsg('saleMsg','تعداد باید عددی بزرگ‌تر از صفر باشد.','err'); return; }
   if(Number(unitPrice)<0 || Number.isNaN(Number(unitPrice))){ showMsg('saleMsg','قیمت فروش نمی‌تواند منفی باشد.','err'); return; }
   const product=loadProducts().find(p=>p.id===productId);
-  /* هزینه‌ی BOM این فروش، با قیمت *همین الان*، محاسبه و برای همیشه ذخیره میشه —
-     تا با ثبت هزینه‌ی جدید در آینده، سود انتظاریِ این فروش دیگه عوض نشه */
-  const consumedCost = product ? computeProductCost(product, loadPriceItems()) * Number(qty) : 0;
-  /* ریز مصرف مواد این فروش هم بر اساس دستور (BOM) *همین الان* محاسبه و
-     ذخیره میشه — تا اگه بعداً دستور محصول رو اصلاح کنی، موجودی انبارِ
-     این فروش دیگه با دستور جدید دوباره حساب نشه */
-  const consumption = product ? (product.bom||[]).map(b=>({
-    itemId: b.itemId, qty: (Number(b.qty)||0) * Number(qty)
-  })) : [];
+  const priceItems=loadPriceItems();
+  /* موادبریِ این فروش رو از ادیتور سفارشی می‌خونیم (که پیش‌فرضش از خود محصول پر شده،
+     مگر اینکه کاربر دستی تغییرش داده باشه — مثلاً برای یه سفارش خاص).
+     هم هزینه و هم ریز مصرف همین الان محاسبه و برای همیشه ذخیره میشن. */
+  const cleanConsumptionPerUnit = currentSaleConsumption
+    .filter(r=>r.itemId && Number(r.qty)>0)
+    .map(r=>({itemId:r.itemId, qty:Number(r.qty)}));
+  const consumedCost = cleanConsumptionPerUnit.reduce((s,row)=>{
+    const item=priceItems.find(i=>i.id===row.itemId);
+    return s + (item ? row.qty*item.unitPrice : 0);
+  },0) * Number(qty);
+  const consumption = cleanConsumptionPerUnit.map(row=>({
+    itemId: row.itemId, qty: row.qty * Number(qty)
+  }));
   const rec={
     productId, productName: product?product.name:'(محصول حذف‌شده)',
     date, qty:Number(qty), unitPrice:Number(unitPrice), note, consumedCost, consumption
