@@ -930,7 +930,8 @@ function productToRow(o){
 }
 function saleToRow(o){
   return {id:o.id, business_id:BUSINESS_ID, product_id:o.productId||null, product_name:o.productName,
-    qty:o.qty, unit_price:o.unitPrice, date:o.date, note:o.note||null, consumed_cost:o.consumedCost||0};
+    qty:o.qty, unit_price:o.unitPrice, date:o.date, note:o.note||null, consumed_cost:o.consumedCost||0,
+    consumption:o.consumption||[]};
 }
 function priceItemToRow(o){
   return {id:o.id, business_id:BUSINESS_ID, name:o.name, unit_id:unitIdByName(o.unit),
@@ -1175,7 +1176,8 @@ function materialFromRow(r){
 }
 function saleFromRow(r){
   return {id:r.id, productId:r.product_id, productName:r.product_name, qty:Number(r.qty)||0,
-    unitPrice:Number(r.unit_price)||0, date:r.date, note:r.note||'', consumedCost:Number(r.consumed_cost)||0};
+    unitPrice:Number(r.unit_price)||0, date:r.date, note:r.note||'', consumedCost:Number(r.consumed_cost)||0,
+    consumption:Array.isArray(r.consumption)?r.consumption:[]};
 }
 function unitFromRow(r){ return {id:r.id, name:r.name}; }
 function priceItemFromRow(r){
@@ -1294,7 +1296,8 @@ async function loadAllFromSupabase(){
 
   const salesArr=(salRes.data||[]).map(r=>({
     id:r.id, productId:r.product_id, productName:r.product_name, qty:Number(r.qty)||0,
-    unitPrice:Number(r.unit_price)||0, date:r.date, note:r.note||'', consumedCost:Number(r.consumed_cost)||0
+    unitPrice:Number(r.unit_price)||0, date:r.date, note:r.note||'', consumedCost:Number(r.consumed_cost)||0,
+    consumption:Array.isArray(r.consumption)?r.consumption:[]
   }));
 
   return {materials:materialsArr, products:productsArr, sales:salesArr, priceItems:priceItemsArr, units:unitsArr};
@@ -1364,12 +1367,9 @@ function computeInventoryValue(priceItems, materials, sales, products){
 
   const consumed = {};
   (sales || []).forEach(s => {
-    const product = (products || []).find(p => p.id === s.productId);
-    if (!product || !product.bom) return;
-    const saleQty = Number(s.qty) || 0;
-    product.bom.forEach(b => {
-      if (!b.itemId || !goodsIds.has(b.itemId)) return;
-      consumed[b.itemId] = (consumed[b.itemId] || 0) + (Number(b.qty) || 0) * saleQty;
+    (s.consumption || []).forEach(c => {
+      if (!c.itemId || !goodsIds.has(c.itemId)) return;
+      consumed[c.itemId] = (consumed[c.itemId] || 0) + (Number(c.qty) || 0);
     });
   });
 
@@ -2334,14 +2334,11 @@ function computeInventory(){
 
   const consumedMap = {};
   sales.forEach(s => {
-    const product = products.find(p => p.id === s.productId);
-    if (!product || !product.bom || product.bom.length === 0) return;
-    const saleQty = Number(s.qty) || 0;
-    product.bom.forEach(b => {
-      if (!b.itemId || !goodsIds.has(b.itemId)) return;
-      const perUnit = Number(b.qty) || 0;
-      if (perUnit === 0) return;
-      consumedMap[b.itemId] = (consumedMap[b.itemId] || 0) + (perUnit * saleQty);
+    (s.consumption || []).forEach(c => {
+      if (!c.itemId || !goodsIds.has(c.itemId)) return;
+      const qty = Number(c.qty) || 0;
+      if (qty === 0) return;
+      consumedMap[c.itemId] = (consumedMap[c.itemId] || 0) + qty;
     });
   });
 
@@ -2532,9 +2529,15 @@ document.getElementById('saleForm').addEventListener('submit',function(e){
   /* هزینه‌ی BOM این فروش، با قیمت *همین الان*، محاسبه و برای همیشه ذخیره میشه —
      تا با ثبت هزینه‌ی جدید در آینده، سود انتظاریِ این فروش دیگه عوض نشه */
   const consumedCost = product ? computeProductCost(product, loadPriceItems()) * Number(qty) : 0;
+  /* ریز مصرف مواد این فروش هم بر اساس دستور (BOM) *همین الان* محاسبه و
+     ذخیره میشه — تا اگه بعداً دستور محصول رو اصلاح کنی، موجودی انبارِ
+     این فروش دیگه با دستور جدید دوباره حساب نشه */
+  const consumption = product ? (product.bom||[]).map(b=>({
+    itemId: b.itemId, qty: (Number(b.qty)||0) * Number(qty)
+  })) : [];
   const rec={
     productId, productName: product?product.name:'(محصول حذف‌شده)',
-    date, qty:Number(qty), unitPrice:Number(unitPrice), note, consumedCost
+    date, qty:Number(qty), unitPrice:Number(unitPrice), note, consumedCost, consumption
   };
   const all=loadSales();
   if(saleEditingId){
